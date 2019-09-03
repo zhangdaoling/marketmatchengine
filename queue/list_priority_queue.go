@@ -95,6 +95,11 @@ func (p *PriorityList) Pop() (item Item) {
 	return e.Value
 }
 
+//for PriorityQueue interface
+func(p *PriorityList) Len()(int){
+	return p.len
+}
+
 func (p *PriorityList) remove(e *Element) *Element {
 	e.prev.next = e.next
 	if e.next != nil {

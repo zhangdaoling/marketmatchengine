@@ -2,8 +2,19 @@ package order
 
 import "fmt"
 
+//to do
+func(o *Order) Serialize() []byte{
+	return nil
+}
+
+//to do
+func UnSerialize(data []byte, o *Order) (err error){
+	return
+}
+
 type Order struct {
 	ID                int32
+	CancelID          int32
 	UserID            int32
 	OrderTime         int64
 	InitialPrice      int64
@@ -13,8 +24,7 @@ type Order struct {
 	LastMatchedAmount int64
 	IsMarket          bool //market order or limit order
 	IsBuy             bool //buy order or sell order
-	IsCancel          bool //cancel order
-	Canceled          bool
+	Canceled          bool //canceled
 	Symbol            string
 }
 
@@ -22,6 +32,7 @@ type Order struct {
 func (o *Order) String() string {
 	return fmt.Sprintf("\n"+
 		"ID: %d\n"+
+		"CancelID: %d\n"+
 		"UserID: %d\n"+
 		"OrderTime: %d\n"+
 		"InitialPrice: %d\n"+
@@ -30,10 +41,9 @@ func (o *Order) String() string {
 		"LastMatchedAmount: %d\n"+
 		"IsMarket: %t\n"+
 		"IsBuy: %t\n"+
-		"IsCancel: %t\n"+
 		"Canceled: %t\n"+
 		"Symbol: %s\n",
-		o.ID, o.UserID, o.OrderTime, o.InitialPrice, o.RemainAmount, o.LastMatchedPrice, o.LastMatchedAmount, o.IsMarket, o.IsBuy, o.IsCancel, o.Canceled, o.Symbol)
+		o.ID, o.CancelID, o.UserID, o.OrderTime, o.InitialPrice, o.RemainAmount, o.LastMatchedPrice, o.LastMatchedAmount, o.IsMarket, o.IsBuy, o.Canceled, o.Symbol)
 }
 
 //market first, price second, id third
@@ -67,6 +77,7 @@ func (o *Order) Key() int32 {
 }
 
 type MatchResult struct {
+	CancelID   int32
 	BuyID      int32
 	SellID     int32
 	BuyUserID  int32
@@ -74,13 +85,13 @@ type MatchResult struct {
 	MatchTime  int64
 	Price      int64
 	Amount     int64
-	IsCancel   bool //match result or cancel result
 	Symbol     string
 }
 
 //for print
 func (m *MatchResult) String() string {
 	return fmt.Sprintf("\n"+
+		"CancelID: %d\n"+
 		"BuyID: %d\n"+
 		"SellID: %d\n"+
 		"BuyUserID: %d\n"+
@@ -88,9 +99,8 @@ func (m *MatchResult) String() string {
 		"MatchTime: %d\n"+
 		"Price: %d\n"+
 		"Amount: %d\n"+
-		"IsMatchResult: %t\n"+
 		"Symbol: %s\n",
-		m.BuyID, m.SellID, m.BuyUserID, m.SellUserID, m.MatchTime, m.Price, m.Amount, m.IsCancel, m.Symbol)
+		m.CancelID, m.BuyID, m.SellID, m.BuyUserID, m.SellUserID, m.MatchTime, m.Price, m.Amount, m.Symbol)
 }
 
 //to do: use which price when buy.InitialPrice >= sell.InitialPrice
@@ -109,7 +119,6 @@ func Match(lastPrice int64, buy *Order, sell *Order, time int64) (r *MatchResult
 		SellUserID: sell.UserID,
 		Symbol:     buy.Symbol,
 		MatchTime:  time,
-		IsCancel:   false,
 	}
 	if buy.IsMarket && sell.IsMarket {
 		matchPrice = lastPrice

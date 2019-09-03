@@ -5,6 +5,11 @@ import (
 	"testing"
 )
 
+//to do
+func TestMatch(t *testing.T) {
+	return
+}
+
 func TestCompare1(t *testing.T) {
 	var order1, order2 *Order
 	var r int

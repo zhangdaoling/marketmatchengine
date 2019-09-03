@@ -11,6 +11,24 @@ var orders []*order.Order
 var result []*order.MatchResult
 var testLength = 10000
 
+//to do
+func TestCancel(t *testing.T) {
+	return
+}
+
+func TestEngine(t *testing.T) {
+	InitOrders()
+	orderChan := make(chan *order.Order, 100)
+	resultChan := make(chan *order.MatchResult, 100)
+	shutChan := make(chan struct{})
+	e, _ := NewEngine(orderChan, resultChan, "usdt/btc", 100)
+	go getResult(resultChan)
+	go getOrder(orderChan)
+	go e.Loop(shutChan)
+
+	time.Sleep(10 * time.Second)
+}
+
 func InitOrders() {
 	symbol := "usdt/btc"
 	orders = make([]*order.Order, 0, 2*testLength)
@@ -71,27 +89,14 @@ func InitOrders() {
 	}
 }
 
-func TestEngine(t *testing.T) {
-	InitOrders()
-	orderChan := make(chan *order.Order, 100)
-	resultChan := make(chan *order.MatchResult, 100)
-	shutChan := make(chan struct{})
-	e, _ := NewEngine(orderChan, resultChan, "usdt/btc", 100)
-	go GetResult(resultChan)
-	go GetOrder(orderChan)
-	go e.Loop(shutChan)
-
-	time.Sleep(10 * time.Second)
-}
-
-func GetOrder(orderChan chan *order.Order) {
+func getOrder(orderChan chan *order.Order) {
 	for _, o := range orders {
 		fmt.Printf("get order: %v\n", o)
 		orderChan <- o
 	}
 }
 
-func GetResult(resultChan chan *order.MatchResult) {
+func getResult(resultChan chan *order.MatchResult) {
 	var i int
 	start := time.Now()
 	for {

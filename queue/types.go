@@ -10,4 +10,5 @@ type PriorityQueue interface {
 	Cancel(key int32) (item Item)
 	First() (item Item)
 	Pop() (item Item)
+	Len()(length int)
 }

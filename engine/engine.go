@@ -7,6 +7,21 @@ import (
 	"time"
 )
 
+//to do
+func NewEngineFromFile(engineFile string, orderChan chan *order.Order, matchResultChan chan *order.MatchResult) (engine *Engine, err error) {
+	return
+}
+
+//to do
+func(e *Engine) Serialize() (data []byte){
+	return
+}
+
+//to do
+func UnSerialize(data []byte, e *Engine) (err error){
+	return
+}
+
 type Engine struct {
 	OrderChan       chan *order.Order
 	MatchResultChan chan *order.MatchResult
@@ -16,10 +31,6 @@ type Engine struct {
 	Symbol          string
 	BuyQueue        queue.PriorityQueue
 	SellQueue       queue.PriorityQueue
-}
-
-func NewEngineFromFile(engineFile string, orderChan chan *order.Order, matchResultChan chan *order.MatchResult) (engine *Engine, err error) {
-	return
 }
 
 func NewEngine(orderChan chan *order.Order, matchResultChan chan *order.MatchResult, symbol string, lastPrice int64) (engine *Engine, err error) {
@@ -36,13 +47,16 @@ func NewEngine(orderChan chan *order.Order, matchResultChan chan *order.MatchRes
 	return engine, nil
 }
 
-func (m *Engine) Loop(shutdown chan struct{}) {
+func (e *Engine) Loop(shutdown chan struct{}) {
+	timer := time.NewTimer(100*time.Second)
 	for {
 		select {
 		case <-shutdown:
 			return
-		case o := <-m.OrderChan:
-			m.processOrder(o)
+		case o := <-e.OrderChan:
+			e.processOrder(o)
+		case <-timer.C:
+			e.Serialize()
 		}
 	}
 }
@@ -62,7 +76,7 @@ func (e *Engine) processOrder(o *order.Order) (err error) {
 
 	e.LastOrderID = o.ID
 	e.LastOrderTime = o.OrderTime
-	if o.IsCancel {
+	if o.CancelID != 0 {
 		return e.cancel(o)
 	}
 	if o.IsBuy {
@@ -77,19 +91,19 @@ func (e *Engine) processOrder(o *order.Order) (err error) {
 func (e *Engine) cancel(cancelOrder *order.Order) (err error) {
 	var item queue.Item
 	if cancelOrder.IsBuy {
-		item = e.BuyQueue.Cancel(cancelOrder.ID)
+		item = e.BuyQueue.Cancel(cancelOrder.CancelID)
 	} else {
-		item = e.SellQueue.Cancel(cancelOrder.ID)
+		item = e.SellQueue.Cancel(cancelOrder.CancelID)
 	}
 	if item == nil {
 		return
 	}
 	o := item.(*order.Order)
 	result := &order.MatchResult{
+		CancelID:  o.ID,
 		Price:     o.InitialPrice,
 		Amount:    o.RemainAmount,
 		MatchTime: e.LastOrderTime,
-		IsCancel:  true,
 		Symbol:    o.Symbol,
 	}
 	if cancelOrder.IsBuy {

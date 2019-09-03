@@ -1,6 +1,5 @@
+//no lock, not go
 package queue
-
-import "errors"
 
 type Element struct {
 	next, prev *Element
@@ -28,12 +27,28 @@ type PriorityList struct {
 	search map[int32]*Element
 }
 
-func (p *PriorityList) Insert(item Item) (err error) {
+func NewPriorityList() (p *PriorityList) {
+	p = &PriorityList{}
+	p.search = make(map[int32]*Element, 100)
+	p.init()
+	return p
+}
+
+func (p *PriorityList) init() *PriorityList {
+	p.root.next = &p.root
+	p.root.prev = &p.root
+	p.root.list = p
+	p.len = 0
+	return p
+}
+
+//for PriorityQueue interface
+func (p *PriorityList) Insert(item Item) (i Item) {
 	if item == nil {
-		return
+		return nil
 	}
 	if _, ok := p.search[item.Key()]; ok {
-		return errors.New("same ID")
+		return nil
 	}
 	element := &p.root
 	for {
@@ -51,6 +66,7 @@ func (p *PriorityList) Insert(item Item) (err error) {
 	return
 }
 
+//for PriorityQueue interface
 func (p *PriorityList) Cancel(key int32) (item Item) {
 	if element, ok := p.search[key]; ok {
 		delete(p.search, key)
@@ -60,6 +76,7 @@ func (p *PriorityList) Cancel(key int32) (item Item) {
 	return nil
 }
 
+//for PriorityQueue interface
 func (p *PriorityList) First() (item Item) {
 	e := p.root.next
 	if e == nil {
@@ -68,6 +85,7 @@ func (p *PriorityList) First() (item Item) {
 	return e.Value
 }
 
+//for PriorityQueue interface
 func (p *PriorityList) Pop() (item Item) {
 	e := p.root.next
 	if e == nil {
@@ -77,24 +95,11 @@ func (p *PriorityList) Pop() (item Item) {
 	return e.Value
 }
 
-func NewPriorityList() (p *PriorityList) {
-	p = &PriorityList{}
-	p.search = make(map[int32]*Element, 100)
-	p.init()
-	return p
-}
-
-func (p *PriorityList) init() *PriorityList {
-	p.root.next = &p.root
-	p.root.prev = &p.root
-	p.root.list = p
-	p.len = 0
-	return p
-}
-
 func (p *PriorityList) remove(e *Element) *Element {
 	e.prev.next = e.next
-	e.next.prev = e.prev
+	if e.next != nil {
+		e.next.prev = e.prev
+	}
 	e.next = nil
 	e.prev = nil
 	e.list = nil

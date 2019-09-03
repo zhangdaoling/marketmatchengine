@@ -81,7 +81,7 @@ func TestEngine(t *testing.T) {
 	go GetOrder(orderChan)
 	go e.Loop(shutChan)
 
-	time.Sleep(10*time.Second)
+	time.Sleep(10 * time.Second)
 }
 
 func GetOrder(orderChan chan *order.Order) {
@@ -99,7 +99,7 @@ func GetResult(resultChan chan *order.MatchResult) {
 		case result := <-resultChan:
 			i++
 			fmt.Printf("count:%d, get result: %v\n", i, result)
-			if i %(testLength/2) ==0{
+			if i%(testLength/2) == 0 {
 				fmt.Printf("buy: %d, sell: %d, match: %d, cost:%s second\n", testLength, testLength, testLength, time.Since(start).String())
 			}
 		}

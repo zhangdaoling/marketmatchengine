@@ -67,15 +67,15 @@ func (o *Order) Key() int32 {
 }
 
 type MatchResult struct {
-	BuyID         int32
-	SellID        int32
-	BuyUserID     int32
-	SellUserID    int32
-	MatchTime     int64
-	Price         int64
-	Amount        int64
-	IsMatchResult bool //match result or cancel result
-	Symbol        string
+	BuyID      int32
+	SellID     int32
+	BuyUserID  int32
+	SellUserID int32
+	MatchTime  int64
+	Price      int64
+	Amount     int64
+	IsCancel   bool //match result or cancel result
+	Symbol     string
 }
 
 //for print
@@ -90,10 +90,10 @@ func (m *MatchResult) String() string {
 		"Amount: %d\n"+
 		"IsMatchResult: %t\n"+
 		"Symbol: %s\n",
-		m.BuyID, m.SellID, m.BuyUserID, m.SellUserID, m.MatchTime, m.Price, m.Amount, m.IsMatchResult, m.Symbol)
+		m.BuyID, m.SellID, m.BuyUserID, m.SellUserID, m.MatchTime, m.Price, m.Amount, m.IsCancel, m.Symbol)
 }
 
-//
+//to do: use which price when buy.InitialPrice >= sell.InitialPrice
 func Match(lastPrice int64, buy *Order, sell *Order, time int64) (r *MatchResult) {
 	if buy.Canceled || sell.Canceled {
 		return nil
@@ -103,22 +103,24 @@ func Match(lastPrice int64, buy *Order, sell *Order, time int64) (r *MatchResult
 	}
 	var matchPrice, amount int64
 	r = &MatchResult{
-		BuyID:         buy.ID,
-		SellID:        sell.ID,
-		BuyUserID:     buy.UserID,
-		SellUserID:    sell.UserID,
-		Symbol:        buy.Symbol,
-		MatchTime:     time,
-		IsMatchResult: true,
+		BuyID:      buy.ID,
+		SellID:     sell.ID,
+		BuyUserID:  buy.UserID,
+		SellUserID: sell.UserID,
+		Symbol:     buy.Symbol,
+		MatchTime:  time,
+		IsCancel:   false,
 	}
 	if buy.IsMarket && sell.IsMarket {
 		matchPrice = lastPrice
 		amount = min(buy.RemainAmount, sell.RemainAmount)
 
 	} else if buy.IsMarket {
-		matchPrice = lastPrice
+		matchPrice = sell.InitialPrice
 		amount = min(buy.RemainAmount, sell.RemainAmount)
 	} else if sell.IsMarket {
+		matchPrice = buy.InitialPrice
+		amount = min(buy.RemainAmount, sell.RemainAmount)
 	} else {
 		if buy.InitialPrice < sell.InitialPrice {
 			return nil

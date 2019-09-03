@@ -6,7 +6,7 @@ type Item interface {
 }
 
 type PriorityQueue interface {
-	Insert(item Item) (err error)
+	Insert(item Item) (i Item)
 	Cancel(key int32) (item Item)
 	First() (item Item)
 	Pop() (item Item)

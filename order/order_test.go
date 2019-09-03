@@ -114,7 +114,7 @@ func TestCompare2(t *testing.T) {
 		ID:           2,
 	}
 	r = order1.Compare(order2)
-	assert.Equal(t, r, 1, order2)
+	assert.Equal(t, r, -1, order2)
 
 	//limit and limit, check price
 	order2 = &Order{
@@ -123,7 +123,7 @@ func TestCompare2(t *testing.T) {
 		ID:           2,
 	}
 	r = order1.Compare(order2)
-	assert.Equal(t, r, -1, order2)
+	assert.Equal(t, r, 1, order2)
 
 	//limit and limit, price = price, check id
 	order2 = &Order{

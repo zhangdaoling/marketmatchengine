@@ -18,7 +18,7 @@ type Engine struct {
 	SellQueue       queue.PriorityQueue
 }
 
-func NewEngineFromFile(engineFile string, orderChan chan *order.Order, matchResultChan chan *order.MatchResult) (engine *Engine, err error){
+func NewEngineFromFile(engineFile string, orderChan chan *order.Order, matchResultChan chan *order.MatchResult) (engine *Engine, err error) {
 	return
 }
 
@@ -86,11 +86,11 @@ func (e *Engine) cancel(cancelOrder *order.Order) (err error) {
 	}
 	o := item.(*order.Order)
 	result := &order.MatchResult{
-		Price:         o.InitialPrice,
-		Amount:        o.RemainAmount,
-		MatchTime:     e.LastOrderTime,
-		IsMatchResult: false,
-		Symbol:        o.Symbol,
+		Price:     o.InitialPrice,
+		Amount:    o.RemainAmount,
+		MatchTime: e.LastOrderTime,
+		IsCancel:  true,
+		Symbol:    o.Symbol,
 	}
 	if cancelOrder.IsBuy {
 		result.BuyID = o.ID

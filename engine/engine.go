@@ -2,53 +2,48 @@ package engine
 
 import (
 	"fmt"
+	"github.com/zhangdaoling/marketmatchengine/common"
 	"github.com/zhangdaoling/marketmatchengine/order"
 	"github.com/zhangdaoling/marketmatchengine/queue"
 	"time"
 )
+
+type Engine struct {
+	OrderChan       chan *order.Order
+	MatchResultChan chan *order.MatchResult
+	LastOrderID     uint32
+	LastMatchPrice  uint64
+	LastOrderTime   uint64
+	Symbol          string
+	BuyQueue        queue.PriorityQueue
+	SellQueue       queue.PriorityQueue
+	ColdSaveTime    uint64
+	StoragePath     string
+}
 
 //to do
 func NewEngineFromFile(engineFile string, orderChan chan *order.Order, matchResultChan chan *order.MatchResult) (engine *Engine, err error) {
 	return
 }
 
-//to do
-func(e *Engine) Serialize() (data []byte){
-	return
-}
-
-//to do
-func UnSerialize(data []byte, e *Engine) (err error){
-	return
-}
-
-type Engine struct {
-	OrderChan       chan *order.Order
-	MatchResultChan chan *order.MatchResult
-	LastMatchPrice  int64
-	LastOrderTime   int64
-	LastOrderID     int32
-	Symbol          string
-	BuyQueue        queue.PriorityQueue
-	SellQueue       queue.PriorityQueue
-}
-
-func NewEngine(orderChan chan *order.Order, matchResultChan chan *order.MatchResult, symbol string, lastPrice int64) (engine *Engine, err error) {
+func NewEngine(orderChan chan *order.Order, matchResultChan chan *order.MatchResult, symbol string, lastPrice uint64, coldSaveTime uint64, storagePath string) (engine *Engine, err error) {
 	sellQueue := queue.NewPriorityList()
 	buyQueue := queue.NewPriorityList()
 	engine = &Engine{
 		OrderChan:       orderChan,
 		MatchResultChan: matchResultChan,
+		LastMatchPrice:  lastPrice,
 		Symbol:          symbol,
 		BuyQueue:        buyQueue,
 		SellQueue:       sellQueue,
-		LastMatchPrice:  lastPrice,
+		ColdSaveTime:    coldSaveTime,
+		StoragePath:     storagePath,
 	}
 	return engine, nil
 }
 
 func (e *Engine) Loop(shutdown chan struct{}) {
-	timer := time.NewTimer(100*time.Second)
+	timer := time.NewTimer(100 * time.Second)
 	for {
 		select {
 		case <-shutdown:
@@ -60,6 +55,46 @@ func (e *Engine) Loop(shutdown chan struct{}) {
 		}
 	}
 }
+
+func (e *Engine) Serialize() (zero *common.ZeroCopySink) {
+	zero = common.NewZeroCopySink(nil)
+	zero.WriteUint32(e.LastOrderID)
+	zero.WriteUint64(e.LastMatchPrice)
+	zero.WriteUint64(e.LastOrderTime)
+	zero.WriteString(e.Symbol)
+	buyData := e.BuyQueue.Serialize()
+	zero.WriteBytes(buyData.Bytes())
+	sellData := e.BuyQueue.Serialize()
+	zero.WriteBytes(sellData.Bytes())
+	return
+}
+
+func UnSerialize(data []byte, e *Engine) (err error) {
+	zero := common.NewZeroCopySource(data)
+	var eof, irregular bool
+	e.LastOrderID, eof = zero.NextUint32()
+	if eof {
+		return common.ErrTooLarge
+	}
+	e.LastMatchPrice, eof = zero.NextUint64()
+	if eof {
+		return common.ErrTooLarge
+	}
+	e.LastOrderTime, eof = zero.NextUint64()
+	if eof {
+		return common.ErrTooLarge
+	}
+	var listType string
+	listType, _, irregular, eof = zero.NextString()
+	if irregular {
+		return common.ErrIrregularData
+	}
+	if eof {
+		return common.ErrUnexpectedEOF
+	}
+	return
+}
+
 
 func (e *Engine) processOrder(o *order.Order) (err error) {
 	//start := time.Now()

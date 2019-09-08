@@ -1,6 +1,8 @@
 //no lock, not go
 package queue
 
+import "github.com/zhangdaoling/marketmatchengine/common"
+
 type Element struct {
 	next, prev *Element
 	list       *PriorityList
@@ -24,12 +26,12 @@ func (e *Element) Prev() *Element {
 type PriorityList struct {
 	root   Element
 	len    int
-	search map[int32]*Element
+	search map[uint32]*Element
 }
 
 func NewPriorityList() (p *PriorityList) {
 	p = &PriorityList{}
-	p.search = make(map[int32]*Element, 100)
+	p.search = make(map[uint32]*Element, 100)
 	p.init()
 	return p
 }
@@ -67,7 +69,7 @@ func (p *PriorityList) Insert(item Item) (i Item) {
 }
 
 //for PriorityQueue interface
-func (p *PriorityList) Cancel(key int32) (item Item) {
+func (p *PriorityList) Cancel(key uint32) (item Item) {
 	if element, ok := p.search[key]; ok {
 		delete(p.search, key)
 		p.remove(element)
@@ -96,8 +98,13 @@ func (p *PriorityList) Pop() (item Item) {
 }
 
 //for PriorityQueue interface
-func(p *PriorityList) Len()(int){
+func (p *PriorityList) Len() int {
 	return p.len
+}
+
+//for PriorityQueue interface
+func (p *PriorityList) Serialize() (zero *common.ZeroCopySink) {
+	return
 }
 
 func (p *PriorityList) remove(e *Element) *Element {

@@ -2,14 +2,8 @@ package common
 
 import (
 	"encoding/binary"
-	"errors"
 	"math"
 )
-
-var ErrIrregularData = errors.New("irregular data")
-var ErrUnexpectedEOF = errors.New("unexpected EOF")
-var ErrTooLarge = errors.New("bytes.Buffer: too large")
-var ErrExpectedEOF = errors.New("Expected EOF")
 
 const (
 	MAX_UINT64 = math.MaxUint64

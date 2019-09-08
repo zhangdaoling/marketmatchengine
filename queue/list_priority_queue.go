@@ -1,7 +1,11 @@
 //no lock, not go
 package queue
 
-import "github.com/zhangdaoling/marketmatchengine/common"
+import (
+	"github.com/zhangdaoling/marketmatchengine/common"
+)
+
+var List_Queue_Name = "list_priority_queue"
 
 type Element struct {
 	next, prev *Element
@@ -25,7 +29,7 @@ func (e *Element) Prev() *Element {
 
 type PriorityList struct {
 	root   Element
-	len    int
+	len    uint32
 	search map[uint32]*Element
 }
 
@@ -98,12 +102,19 @@ func (p *PriorityList) Pop() (item Item) {
 }
 
 //for PriorityQueue interface
-func (p *PriorityList) Len() int {
+func (p *PriorityList) Len() uint32 {
 	return p.len
 }
 
 //for PriorityQueue interface
 func (p *PriorityList) Serialize() (zero *common.ZeroCopySink) {
+	zero = common.NewZeroCopySink(nil)
+	zero.WriteString(List_Queue_Name)
+	zero.WriteUint32(p.len)
+	for element := p.root.Next(); element != nil; element = element.Next() {
+		data := element.Value.Serialize()
+		zero.WriteVarBytes(data.Bytes())
+	}
 	return
 }
 

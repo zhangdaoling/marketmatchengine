@@ -51,50 +51,10 @@ func (e *Engine) Loop(shutdown chan struct{}) {
 		case o := <-e.OrderChan:
 			e.processOrder(o)
 		case <-timer.C:
-			e.Serialize()
+			e.serialize()
 		}
 	}
 }
-
-func (e *Engine) Serialize() (zero *common.ZeroCopySink) {
-	zero = common.NewZeroCopySink(nil)
-	zero.WriteUint32(e.LastOrderID)
-	zero.WriteUint64(e.LastMatchPrice)
-	zero.WriteUint64(e.LastOrderTime)
-	zero.WriteString(e.Symbol)
-	buyData := e.BuyQueue.Serialize()
-	zero.WriteBytes(buyData.Bytes())
-	sellData := e.BuyQueue.Serialize()
-	zero.WriteBytes(sellData.Bytes())
-	return
-}
-
-func UnSerialize(data []byte, e *Engine) (err error) {
-	zero := common.NewZeroCopySource(data)
-	var eof, irregular bool
-	e.LastOrderID, eof = zero.NextUint32()
-	if eof {
-		return common.ErrTooLarge
-	}
-	e.LastMatchPrice, eof = zero.NextUint64()
-	if eof {
-		return common.ErrTooLarge
-	}
-	e.LastOrderTime, eof = zero.NextUint64()
-	if eof {
-		return common.ErrTooLarge
-	}
-	var listType string
-	listType, _, irregular, eof = zero.NextString()
-	if irregular {
-		return common.ErrIrregularData
-	}
-	if eof {
-		return common.ErrUnexpectedEOF
-	}
-	return
-}
-
 
 func (e *Engine) processOrder(o *order.Order) (err error) {
 	//start := time.Now()
@@ -111,6 +71,7 @@ func (e *Engine) processOrder(o *order.Order) (err error) {
 
 	e.LastOrderID = o.ID
 	e.LastOrderTime = o.OrderTime
+	//fmt.Println("process order: ", o)
 	if o.CancelID != 0 {
 		return e.cancel(o)
 	}
@@ -181,4 +142,98 @@ func (e *Engine) match() (err error) {
 
 func TimeConsume(start time.Time) {
 	fmt.Printf("cost %s\n", time.Since(start).String())
+}
+
+func (e *Engine) serialize() (zero *common.ZeroCopySink) {
+	zero = common.NewZeroCopySink(nil)
+	zero.WriteUint32(e.LastOrderID)
+	zero.WriteUint64(e.LastMatchPrice)
+	zero.WriteUint64(e.LastOrderTime)
+	zero.WriteString(e.Symbol)
+	buyData := e.BuyQueue.Serialize()
+	zero.WriteVarBytes(buyData.Bytes())
+	sellData := e.SellQueue.Serialize()
+	zero.WriteVarBytes(sellData.Bytes())
+	return
+}
+
+func unSerialize(data []byte, e *Engine) (err error) {
+	var irregular, eof bool
+	zero := common.NewZeroCopySource(data)
+	e.LastOrderID, eof = zero.NextUint32()
+	if eof {
+		return common.ErrTooLarge
+	}
+	e.LastMatchPrice, eof = zero.NextUint64()
+	if eof {
+		return common.ErrTooLarge
+	}
+	e.LastOrderTime, eof = zero.NextUint64()
+	if eof {
+		return common.ErrTooLarge
+	}
+	e.Symbol, _, irregular, eof = zero.NextString()
+	if irregular {
+		return common.ErrIrregularData
+	}
+	if eof {
+		return common.ErrUnexpectedEOF
+	}
+	var buyBytes, sellBytes []byte
+	buyBytes, _, irregular, eof = zero.NextVarBytes()
+	if irregular {
+		return common.ErrIrregularData
+	}
+	if eof {
+		return common.ErrTooLarge
+	}
+	err = unSerializeList(buyBytes, e.BuyQueue.(*queue.PriorityList))
+	if err != nil {
+		return
+	}
+	sellBytes, _, irregular, eof = zero.NextVarBytes()
+	if irregular {
+		return common.ErrIrregularData
+	}
+	if eof {
+		return common.ErrTooLarge
+	}
+	err = unSerializeList(sellBytes, e.SellQueue.(*queue.PriorityList))
+	if err != nil {
+		return
+	}
+	return
+}
+
+func unSerializeList(data []byte, p *queue.PriorityList) (err error) {
+	var eof, irregular bool
+	var listType string
+	var count uint32
+	var o = &order.Order{}
+	zero := common.NewZeroCopySource(data)
+	listType, _, irregular, eof = zero.NextString()
+	if irregular {
+		return common.ErrIrregularData
+	}
+	if eof {
+		return common.ErrUnexpectedEOF
+	}
+	if listType != queue.List_Queue_Name {
+		return common.ErrQueueType
+	}
+	fmt.Println(listType)
+	count, eof = zero.NextUint32()
+	if eof {
+		return common.ErrUnexpectedEOF
+	}
+	var orderBytes []byte
+	for i := 0; uint32(i) < count; i++ {
+		orderBytes, _, irregular, eof = zero.NextVarBytes()
+		err = order.UnSerialize(orderBytes, o)
+		if err != nil {
+			return
+		}
+		p.Insert(o)
+	}
+	return
 }

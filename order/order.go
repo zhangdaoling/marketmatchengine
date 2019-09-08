@@ -21,6 +21,7 @@ type Order struct {
 }
 
 //market first, price second, id third
+//both must be buy or sell
 func (o *Order) Compare(item interface{}) int {
 	i := item.(*Order)
 	if o.IsMarket && i.IsMarket {
@@ -72,8 +73,8 @@ func (o *Order) Serialize() (zero *common.ZeroCopySink) {
 }
 
 func UnSerialize(data []byte, o *Order) (err error) {
-	zero := common.NewZeroCopySource(data)
 	var eof, irregular bool
+	zero := common.NewZeroCopySource(data)
 	o.RemainAmount, eof = zero.NextUint64()
 	if eof {
 		return common.ErrTooLarge

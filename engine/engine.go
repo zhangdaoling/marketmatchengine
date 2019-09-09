@@ -3,12 +3,13 @@ package engine
 import (
 	"crypto/md5"
 	"fmt"
-	"github.com/zhangdaoling/marketmatchengine/common"
-	"github.com/zhangdaoling/marketmatchengine/order"
-	"github.com/zhangdaoling/marketmatchengine/queue"
 	"io/ioutil"
 	"os"
 	"time"
+
+	"github.com/zhangdaoling/marketmatchengine/common"
+	"github.com/zhangdaoling/marketmatchengine/order"
+	"github.com/zhangdaoling/marketmatchengine/queue"
 )
 
 type Engine struct {

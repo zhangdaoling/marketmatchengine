@@ -2,11 +2,13 @@ package engine
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/zhangdaoling/marketmatchengine/order"
-	"github.com/zhangdaoling/marketmatchengine/queue"
 	"testing"
 	"time"
+
+	"github.com/zhangdaoling/marketmatchengine/order"
+	"github.com/zhangdaoling/marketmatchengine/queue"
+
+	"github.com/stretchr/testify/assert"
 )
 
 //var orders []*order.Order

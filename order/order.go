@@ -2,6 +2,7 @@ package order
 
 import (
 	"fmt"
+
 	"github.com/zhangdaoling/marketmatchengine/common"
 )
 

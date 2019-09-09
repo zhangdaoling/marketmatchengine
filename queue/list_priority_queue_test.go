@@ -1,9 +1,11 @@
 package queue
 
 import (
-	"github.com/zhangdaoling/marketmatchengine/common"
-	"gotest.tools/assert"
 	"testing"
+
+	"github.com/zhangdaoling/marketmatchengine/common"
+
+	"gotest.tools/assert"
 )
 
 type order struct {

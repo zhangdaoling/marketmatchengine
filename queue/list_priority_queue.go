@@ -108,7 +108,7 @@ func (p *PriorityList) Len() uint32 {
 
 //for PriorityQueue interface
 func (p *PriorityList) Serialize() (zero *common.ZeroCopySink) {
-	zero = common.NewZeroCopySink(nil)
+	zero = common.NewZeroCopySink(nil, 64*int(p.Len()))
 	zero.WriteString(List_Queue_Name)
 	zero.WriteUint32(p.len)
 	for element := p.root.Next(); element != nil; element = element.Next() {
@@ -130,6 +130,7 @@ func (p *PriorityList) remove(e *Element) *Element {
 	delete(p.search, e.Value.Key())
 	return e
 }
+
 func (p *PriorityList) insertBefore(i Item, mark *Element) *Element {
 	if mark.list != p {
 		return nil

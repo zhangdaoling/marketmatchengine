@@ -20,6 +20,23 @@ type Order struct {
 	Data          *common.ZeroCopySink
 }
 
+//for print
+func (o *Order) String() string {
+	return fmt.Sprintf("\n"+
+		"ID: %d\n"+
+		"CancelID: %d\n"+
+		"UserID: %d\n"+
+		"OrderTime: %d\n"+
+		"InitialPrice: %d\n"+
+		"RemainAmount: %d\n"+
+		"IsMarket: %t\n"+
+		"IsBuy: %t\n"+
+		"Canceled: %t\n"+
+		"Symbol: %s\n",
+		o.ID, o.CancelID, o.UserID, o.OrderTime, o.InitialPrice, o.RemainAmount, o.IsMarket, o.IsBuy, o.Canceled, o.Symbol)
+}
+
+//for queue.Item interface
 //market first, price second, id third
 //both must be buy or sell
 func (o *Order) Compare(item interface{}) int {
@@ -47,26 +64,12 @@ func (o *Order) Compare(item interface{}) int {
 	return compareID(o.ID, i.ID)
 }
 
+//for queue.Item interface
 func (o *Order) Key() uint32 {
 	return o.ID
 }
 
-//for print
-func (o *Order) String() string {
-	return fmt.Sprintf("\n"+
-		"ID: %d\n"+
-		"CancelID: %d\n"+
-		"UserID: %d\n"+
-		"OrderTime: %d\n"+
-		"InitialPrice: %d\n"+
-		"RemainAmount: %d\n"+
-		"IsMarket: %t\n"+
-		"IsBuy: %t\n"+
-		"Canceled: %t\n"+
-		"Symbol: %s\n",
-		o.ID, o.CancelID, o.UserID, o.OrderTime, o.InitialPrice, o.RemainAmount, o.IsMarket, o.IsBuy, o.Canceled, o.Symbol)
-}
-
+//for queue.Item interface
 func (o *Order) Serialize() (zero *common.ZeroCopySink) {
 	o.Data = o.serialize()
 	return o.Data
@@ -135,7 +138,7 @@ func UnSerialize(data []byte, o *Order) (err error) {
 }
 
 func (o *Order) serialize() (zero *common.ZeroCopySink) {
-	zero = common.NewZeroCopySink(nil)
+	zero = common.NewZeroCopySink(nil, 64)
 	zero.WriteUint64(o.RemainAmount)
 	zero.WriteUint32(o.ID)
 	zero.WriteUint32(o.CancelID)

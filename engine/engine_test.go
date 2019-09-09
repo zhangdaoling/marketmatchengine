@@ -14,7 +14,7 @@ var orders []*order.Order
 var testLength int
 
 func TestEngine(t *testing.T) {
-	initOrders(2)
+	initBuyAndSell(2)
 	orderChan := make(chan *order.Order, 100)
 	resultChan := make(chan *order.MatchResult, 100)
 	shutChan := make(chan struct{})
@@ -32,7 +32,7 @@ func TestEngine(t *testing.T) {
 }
 
 func TestSerializeEngine(t *testing.T) {
-	initOrders(2)
+	initBuy(2)
 	orderChan := make(chan *order.Order, 100)
 	resultChan := make(chan *order.MatchResult, 100)
 	shutChan := make(chan struct{})
@@ -45,9 +45,9 @@ func TestSerializeEngine(t *testing.T) {
 		xxx = 2
 	}
 	time.Sleep(time.Duration(xxx) * time.Second)
-	zero := e1.serialize()
+	zero := e1.Serialize()
 	e2, _ := NewEngine(orderChan, resultChan, "usdt/btc", 100, 100, "/Users/zhangdaoling/work/go-work/marketmatchengine")
-	err := unSerialize(zero.Bytes(), e2)
+	err := UnSerialize(zero.Bytes(), e2)
 	assert.Nil(t, err)
 	assert.Equal(t, e1.LastOrderID, e2.LastOrderID)
 	assert.Equal(t, e1.LastMatchPrice, e2.LastMatchPrice)
@@ -60,7 +60,7 @@ func TestSerializeEngine(t *testing.T) {
 }
 
 func TestSerializeList(t *testing.T) {
-	initOrders2(10)
+	initBuy(10)
 	l1 := queue.NewPriorityList()
 	l2 := queue.NewPriorityList()
 	for _, o := range orders {
@@ -102,7 +102,7 @@ func TestCancel(t *testing.T) {
 	return
 }
 
-func initOrders2(length int) (orders []*order.Order) {
+func initBuy(length int) (orders []*order.Order) {
 	symbol := "usdt/btc"
 	orders = make([]*order.Order, 0, 2*length)
 	for i := 0; i < testLength/2; i++ {
@@ -121,14 +121,14 @@ func initOrders2(length int) (orders []*order.Order) {
 	return
 }
 
-func initOrders(l int) {
+func initBuyAndSell(l int) {
 	testLength = l
 	symbol := "usdt/btc"
 	orders = make([]*order.Order, 0, 2*testLength)
 	length := len(orders)
 	for i := 0; i < testLength/2; i++ {
 		o := &order.Order{
-			ID:            1 + uint32(i + length),
+			ID:            1 + uint32(i+length),
 			UserID:        10000 + uint32(i+length),
 			OrderTime:     200000 + uint64(i+length),
 			InitialPrice:  1 + 2*uint64(i),
@@ -142,7 +142,7 @@ func initOrders(l int) {
 	length = len(orders)
 	for i := 0; i < testLength/2; i++ {
 		o := &order.Order{
-			ID:            1 + uint32(i + length),
+			ID:            1 + uint32(i+length),
 			UserID:        10000 + uint32(i+length),
 			OrderTime:     200000 + uint64(i+length),
 			InitialPrice:  2 + 2*uint64(i),
@@ -157,7 +157,7 @@ func initOrders(l int) {
 	length = len(orders)
 	for i := 0; i < testLength/2; i++ {
 		o := &order.Order{
-			ID:            1 + uint32(i + length),
+			ID:            1 + uint32(i+length),
 			UserID:        10000 + uint32(i+length),
 			OrderTime:     200000 + uint64(i+length),
 			InitialPrice:  1 + 2*uint64(i+1000),
@@ -170,7 +170,7 @@ func initOrders(l int) {
 	length = len(orders)
 	for i := 0; i < testLength/2; i++ {
 		o := &order.Order{
-			ID:            1 + uint32(i + length),
+			ID:            1 + uint32(i+length),
 			UserID:        10000 + uint32(i+length),
 			OrderTime:     200000 + uint64(i+length),
 			InitialPrice:  uint64(testLength - i),

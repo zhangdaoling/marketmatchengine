@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"crypto/md5"
 	"fmt"
 	"github.com/zhangdaoling/marketmatchengine/common"
 	"github.com/zhangdaoling/marketmatchengine/order"
@@ -17,8 +18,9 @@ type Engine struct {
 	Symbol          string
 	BuyQueue        queue.PriorityQueue
 	SellQueue       queue.PriorityQueue
-	ColdSaveTime    uint64
-	StoragePath     string
+	CheckSum        []byte
+	PersistTime     uint64
+	PersistPath     string
 }
 
 //to do
@@ -26,7 +28,7 @@ func NewEngineFromFile(engineFile string, orderChan chan *order.Order, matchResu
 	return
 }
 
-func NewEngine(orderChan chan *order.Order, matchResultChan chan *order.MatchResult, symbol string, lastPrice uint64, coldSaveTime uint64, storagePath string) (engine *Engine, err error) {
+func NewEngine(orderChan chan *order.Order, matchResultChan chan *order.MatchResult, symbol string, lastPrice uint64, persistTime uint64, persistPath string) (engine *Engine, err error) {
 	sellQueue := queue.NewPriorityList()
 	buyQueue := queue.NewPriorityList()
 	engine = &Engine{
@@ -36,8 +38,8 @@ func NewEngine(orderChan chan *order.Order, matchResultChan chan *order.MatchRes
 		Symbol:          symbol,
 		BuyQueue:        buyQueue,
 		SellQueue:       sellQueue,
-		ColdSaveTime:    coldSaveTime,
-		StoragePath:     storagePath,
+		PersistTime:     persistTime,
+		PersistPath:     persistPath,
 	}
 	return engine, nil
 }
@@ -51,7 +53,7 @@ func (e *Engine) Loop(shutdown chan struct{}) {
 		case o := <-e.OrderChan:
 			e.processOrder(o)
 		case <-timer.C:
-			e.serialize()
+			e.Serialize()
 		}
 	}
 }
@@ -84,6 +86,7 @@ func (e *Engine) processOrder(o *order.Order) (err error) {
 	return e.match()
 }
 
+//cancel order
 func (e *Engine) cancel(cancelOrder *order.Order) (err error) {
 	var item queue.Item
 	if cancelOrder.IsBuy {
@@ -140,12 +143,8 @@ func (e *Engine) match() (err error) {
 	return
 }
 
-func TimeConsume(start time.Time) {
-	fmt.Printf("cost %s\n", time.Since(start).String())
-}
-
-func (e *Engine) serialize() (zero *common.ZeroCopySink) {
-	zero = common.NewZeroCopySink(nil)
+func (e *Engine) Serialize() (zero *common.ZeroCopySink) {
+	zero = common.NewZeroCopySink(nil, 64*int(e.BuyQueue.Len()+e.SellQueue.Len()))
 	zero.WriteUint32(e.LastOrderID)
 	zero.WriteUint64(e.LastMatchPrice)
 	zero.WriteUint64(e.LastOrderTime)
@@ -154,10 +153,12 @@ func (e *Engine) serialize() (zero *common.ZeroCopySink) {
 	zero.WriteVarBytes(buyData.Bytes())
 	sellData := e.SellQueue.Serialize()
 	zero.WriteVarBytes(sellData.Bytes())
+	sum := md5.Sum(zero.Bytes())
+	zero.WriteVarBytes(sum[:])
 	return
 }
 
-func unSerialize(data []byte, e *Engine) (err error) {
+func UnSerialize(data []byte, e *Engine) (err error) {
 	var irregular, eof bool
 	zero := common.NewZeroCopySource(data)
 	e.LastOrderID, eof = zero.NextUint32()
@@ -179,6 +180,7 @@ func unSerialize(data []byte, e *Engine) (err error) {
 	if eof {
 		return common.ErrUnexpectedEOF
 	}
+
 	var buyBytes, sellBytes []byte
 	buyBytes, _, irregular, eof = zero.NextVarBytes()
 	if irregular {
@@ -201,6 +203,26 @@ func unSerialize(data []byte, e *Engine) (err error) {
 	err = unSerializeList(sellBytes, e.SellQueue.(*queue.PriorityList))
 	if err != nil {
 		return
+	}
+
+	//calculate check sum
+	dataSize := zero.Size() - zero.Len()
+	zero.Skip(dataSize)
+	dataByte, eof := zero.NextBytes(dataSize)
+	if eof {
+		return common.ErrTooLarge
+	}
+	checkSum := md5.Sum(dataByte)
+	//get check sum
+	e.CheckSum, _, irregular, eof = zero.NextVarBytes()
+	if irregular {
+		return common.ErrIrregularData
+	}
+	if eof {
+		return common.ErrTooLarge
+	}
+	if isByteSame(e.CheckSum, checkSum[:]){
+		return common.ErrEngineCheckSum
 	}
 	return
 }
@@ -237,3 +259,18 @@ func unSerializeList(data []byte, p *queue.PriorityList) (err error) {
 	}
 	return
 }
+
+func isByteSame(data1 []byte, data2 []byte) bool{
+	if len(data1) != len(data2){
+		return false
+	}
+	for i:=0;i<len(data1);i++{
+		if data1[i] != data2[2]{
+			return false
+		}
+	}
+	return true
+}
+
+
+

@@ -6,6 +6,8 @@ import (
 	"github.com/zhangdaoling/marketmatchengine/common"
 	"github.com/zhangdaoling/marketmatchengine/order"
 	"github.com/zhangdaoling/marketmatchengine/queue"
+	"io/ioutil"
+	"os"
 	"time"
 )
 
@@ -19,16 +21,22 @@ type Engine struct {
 	BuyQueue        queue.PriorityQueue
 	SellQueue       queue.PriorityQueue
 	CheckSum        []byte
-	PersistTime     uint64
+	PersistTime     int
 	PersistPath     string
 }
 
 //to do
-func NewEngineFromFile(engineFile string, orderChan chan *order.Order, matchResultChan chan *order.MatchResult) (engine *Engine, err error) {
+func NewEngineFromFile(persistTime int, engineFile string, persistPath string) (e *Engine, err error) {
+	data, err := ioutil.ReadFile(persistPath+engineFile)
+	if err != nil {
+		return
+	}
+	e = &Engine{}
+	err = UnSerialize(data, e)
 	return
 }
 
-func NewEngine(orderChan chan *order.Order, matchResultChan chan *order.MatchResult, symbol string, lastPrice uint64, persistTime uint64, persistPath string) (engine *Engine, err error) {
+func NewEngine(orderChan chan *order.Order, matchResultChan chan *order.MatchResult, symbol string, lastPrice uint64, persistTime int, persistPath string) (engine *Engine, err error) {
 	sellQueue := queue.NewPriorityList()
 	buyQueue := queue.NewPriorityList()
 	engine = &Engine{
@@ -45,20 +53,20 @@ func NewEngine(orderChan chan *order.Order, matchResultChan chan *order.MatchRes
 }
 
 func (e *Engine) Loop(shutdown chan struct{}) {
-	timer := time.NewTimer(100 * time.Second)
+	timer := time.NewTimer(time.Duration(e.PersistTime) * time.Minute)
 	for {
 		select {
 		case <-shutdown:
 			return
 		case o := <-e.OrderChan:
-			e.processOrder(o)
+			e.ProcessOrder(o)
 		case <-timer.C:
-			e.Serialize()
+			e.Persist()
 		}
 	}
 }
 
-func (e *Engine) processOrder(o *order.Order) (err error) {
+func (e *Engine) ProcessOrder(o *order.Order) (err error) {
 	//start := time.Now()
 	//defer TimeConsume(start)
 	if o == nil {
@@ -84,6 +92,30 @@ func (e *Engine) processOrder(o *order.Order) (err error) {
 
 	e.SellQueue.Insert(o)
 	return e.match()
+}
+
+func (e *Engine) Persist() (fileName string, size int, err error) {
+	//start := time.Now()
+	//defer common.TimeConsume(start)
+	fileName = "engine_" + time.Now().Format(time.RFC3339) + ".binary"
+	f, err := os.OpenFile(e.PersistPath+fileName, os.O_RDWR|os.O_CREATE, 0755)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	data := e.Serialize()
+	size, err = f.Write(data.Bytes())
+	if err != nil {
+		return
+	}
+	if size != len(data.Bytes()) {
+	}
+	err = f.Sync()
+	if err != nil {
+		return
+	}
+	return fileName, size, err
 }
 
 //cancel order
@@ -189,10 +221,12 @@ func UnSerialize(data []byte, e *Engine) (err error) {
 	if eof {
 		return common.ErrTooLarge
 	}
+	e.BuyQueue = queue.NewPriorityList()
 	err = unSerializeList(buyBytes, e.BuyQueue.(*queue.PriorityList))
 	if err != nil {
 		return
 	}
+
 	sellBytes, _, irregular, eof = zero.NextVarBytes()
 	if irregular {
 		return common.ErrIrregularData
@@ -200,14 +234,15 @@ func UnSerialize(data []byte, e *Engine) (err error) {
 	if eof {
 		return common.ErrTooLarge
 	}
+	e.SellQueue = queue.NewPriorityList()
 	err = unSerializeList(sellBytes, e.SellQueue.(*queue.PriorityList))
 	if err != nil {
 		return
 	}
 
 	//calculate check sum
-	dataSize := zero.Size() - zero.Len()
-	zero.Skip(dataSize)
+	dataSize := zero.Pos()
+	zero.BackUp(dataSize)
 	dataByte, eof := zero.NextBytes(dataSize)
 	if eof {
 		return common.ErrTooLarge
@@ -221,7 +256,7 @@ func UnSerialize(data []byte, e *Engine) (err error) {
 	if eof {
 		return common.ErrTooLarge
 	}
-	if isByteSame(e.CheckSum, checkSum[:]){
+	if isByteSame(e.CheckSum, checkSum[:]) {
 		return common.ErrEngineCheckSum
 	}
 	return
@@ -231,7 +266,6 @@ func unSerializeList(data []byte, p *queue.PriorityList) (err error) {
 	var eof, irregular bool
 	var listType string
 	var count uint32
-	var o = &order.Order{}
 	zero := common.NewZeroCopySource(data)
 	listType, _, irregular, eof = zero.NextString()
 	if irregular {
@@ -243,7 +277,6 @@ func unSerializeList(data []byte, p *queue.PriorityList) (err error) {
 	if listType != queue.List_Queue_Name {
 		return common.ErrQueueType
 	}
-	fmt.Println(listType)
 	count, eof = zero.NextUint32()
 	if eof {
 		return common.ErrUnexpectedEOF
@@ -251,6 +284,7 @@ func unSerializeList(data []byte, p *queue.PriorityList) (err error) {
 	var orderBytes []byte
 	for i := 0; uint32(i) < count; i++ {
 		orderBytes, _, irregular, eof = zero.NextVarBytes()
+		var o = &order.Order{}
 		err = order.UnSerialize(orderBytes, o)
 		if err != nil {
 			return
@@ -260,17 +294,14 @@ func unSerializeList(data []byte, p *queue.PriorityList) (err error) {
 	return
 }
 
-func isByteSame(data1 []byte, data2 []byte) bool{
-	if len(data1) != len(data2){
+func isByteSame(data1 []byte, data2 []byte) bool {
+	if len(data1) != len(data2) {
 		return false
 	}
-	for i:=0;i<len(data1);i++{
-		if data1[i] != data2[2]{
+	for i := 0; i < len(data1); i++ {
+		if data1[i] != data2[2] {
 			return false
 		}
 	}
 	return true
 }
-
-
-

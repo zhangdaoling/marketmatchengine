@@ -1,13 +1,14 @@
 package queue
 
 import (
+	"github.com/zhangdaoling/marketmatchengine/common"
 	"gotest.tools/assert"
 	"testing"
 )
 
 type order struct {
 	Number int
-	ID     int32
+	ID     uint32
 }
 
 func (o *order) Compare(i interface{}) int {
@@ -21,8 +22,12 @@ func (o *order) Compare(i interface{}) int {
 	}
 }
 
-func (o *order) Key() int32 {
+func (o *order) Key() uint32 {
 	return o.ID
+}
+
+func (o *order) Serialize() (zero *common.ZeroCopySink) {
+	return
 }
 
 func TestInsert(t *testing.T) {

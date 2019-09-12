@@ -1,6 +1,7 @@
 //to do, heap queue is not completed, dont use
 package queue
 
+/*
 import "sync"
 
 type heapItems []Item
@@ -145,3 +146,4 @@ func NewHeapQueue(hint int, allowDuplicates bool) *HeapQueue {
 func (pq *HeapQueue) Show() []Item {
 	return pq.items
 }
+*/

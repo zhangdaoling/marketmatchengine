@@ -2,9 +2,9 @@ package engine
 
 import (
 	"crypto/md5"
-	"fmt"
 	"io/ioutil"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/zhangdaoling/marketmatchengine/common"
@@ -13,22 +13,20 @@ import (
 )
 
 type Engine struct {
-	OrderChan       chan *order.Order
-	MatchResultChan chan *order.MatchResult
-	LastOrderID     uint32
-	LastMatchPrice  uint64
-	LastOrderTime   uint64
-	Symbol          string
-	BuyQueue        queue.PriorityQueue
-	SellQueue       queue.PriorityQueue
-	CheckSum        []byte
-	PersistTime     int
-	PersistPath     string
+	LastOrderID    uint32
+	LastMatchPrice uint64
+	LastOrderTime  uint64
+	Symbol         string
+	BuyOrders      queue.PriorityQueue
+	SellOrders     queue.PriorityQueue
+	BuyQuotations  order.Quotation
+	SellQuotations order.Quotation
+	CheckSum       []byte
+	lock           sync.Mutex
 }
 
-//to do
-func NewEngineFromFile(persistTime int, engineFile string, persistPath string) (e *Engine, err error) {
-	data, err := ioutil.ReadFile(persistPath+engineFile)
+func NewEngineFromFile(fileName string, path string) (e *Engine, err error) {
+	data, err := ioutil.ReadFile(fileName + path)
 	if err != nil {
 		return
 	}
@@ -37,75 +35,100 @@ func NewEngineFromFile(persistTime int, engineFile string, persistPath string) (
 	return
 }
 
-func NewEngine(orderChan chan *order.Order, matchResultChan chan *order.MatchResult, symbol string, lastPrice uint64, persistTime int, persistPath string) (engine *Engine, err error) {
-	sellQueue := queue.NewPriorityList()
-	buyQueue := queue.NewPriorityList()
+func NewEngine(symbol string, lastOrderID uint32, lastPrice uint64, lastOrderTime uint64) (engine *Engine, err error) {
 	engine = &Engine{
-		OrderChan:       orderChan,
-		MatchResultChan: matchResultChan,
-		LastMatchPrice:  lastPrice,
-		Symbol:          symbol,
-		BuyQueue:        buyQueue,
-		SellQueue:       sellQueue,
-		PersistTime:     persistTime,
-		PersistPath:     persistPath,
+		LastMatchPrice: lastPrice,
+		Symbol:         symbol,
+		BuyOrders:      queue.NewPriorityList(),
+		SellOrders:     queue.NewPriorityList(),
+		BuyQuotations:  order.NewQuotation(1000),
+		SellQuotations: order.NewQuotation(1000),
 	}
 	return engine, nil
 }
 
-func (e *Engine) Loop(shutdown chan struct{}) {
-	timer := time.NewTimer(time.Duration(e.PersistTime) * time.Minute)
-	for {
-		select {
-		case <-shutdown:
-			return
-		case o := <-e.OrderChan:
-			e.ProcessOrder(o)
-		case <-timer.C:
-			e.Persist()
-		}
-	}
-}
-
-func (e *Engine) ProcessOrder(o *order.Order) (err error) {
-	//start := time.Now()
-	//defer TimeConsume(start)
+func (e *Engine) Match(o *order.Order) (reuslt []*order.Transaction) {
+	e.lock.Lock()
+	defer e.lock.Unlock()
 	if o == nil {
 		return
 	}
 	if o.ID <= e.LastOrderID {
-		return fmt.Errorf("id is old")
+		return
 	}
 	if o.Symbol != e.Symbol {
-		return fmt.Errorf("symbol is error")
+		return
 	}
 
 	e.LastOrderID = o.ID
 	e.LastOrderTime = o.OrderTime
-	//fmt.Println("process order: ", o)
-	if o.CancelID != 0 {
-		return e.cancel(o)
-	}
-	if o.IsBuy {
-		e.BuyQueue.Insert(o)
-		return e.match()
-	}
 
-	e.SellQueue.Insert(o)
-	return e.match()
+	if o.IsBuy {
+		e.BuyOrders.Insert(o)
+		e.BuyQuotations.Insert(o)
+	} else {
+		e.SellOrders.Insert(o)
+		e.SellQuotations.Insert(o)
+	}
+	return e.match(o)
 }
 
-func (e *Engine) Persist() (fileName string, size int, err error) {
+func (e *Engine) Cancel(cancelOrder *order.Order) (result *order.CancelOrder) {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+	if cancelOrder == nil {
+		return
+	}
+	if cancelOrder.ID <= e.LastOrderID {
+		return
+	}
+	if cancelOrder.Symbol != e.Symbol {
+		return
+	}
+
+	e.LastOrderID = cancelOrder.ID
+	e.LastOrderTime = cancelOrder.OrderTime
+
+	item := e.BuyOrders.Cancel(cancelOrder.CancelOrderID)
+	if item == nil {
+		item = e.SellOrders.Cancel(cancelOrder.CancelOrderID)
+	}
+	if item == nil {
+		return
+	}
+	o := item.(*order.Order)
+	result = &order.CancelOrder{
+		ID:            cancelOrder.ID,
+		CancelOrderID: o.ID,
+		MatchTime:     cancelOrder.OrderTime,
+		Price:         o.InitialPrice,
+		Amount:        o.RemainAmount,
+		IsBuy:         o.IsBuy,
+		Symbol:        o.Symbol,
+	}
+
+	if result.IsBuy {
+		e.BuyQuotations.SubAmount(result.Price, result.Amount)
+	} else {
+		e.SellQuotations.SubAmount(result.Price, result.Amount)
+	}
+
+	return
+}
+
+func (e *Engine) Persist(path string) (fileName string, size int, err error) {
+	e.lock.Lock()
+	defer e.lock.Unlock()
 	//start := time.Now()
 	//defer common.TimeConsume(start)
 	fileName = "engine_" + time.Now().Format(time.RFC3339) + ".binary"
-	f, err := os.OpenFile(e.PersistPath+fileName, os.O_RDWR|os.O_CREATE, 0755)
+	f, err := os.OpenFile(path+fileName, os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
 		return
 	}
 	defer f.Close()
 
-	data := e.Serialize()
+	data := e.serialize()
 	size, err = f.Write(data.Bytes())
 	if err != nil {
 		return
@@ -119,73 +142,64 @@ func (e *Engine) Persist() (fileName string, size int, err error) {
 	return fileName, size, err
 }
 
-//cancel order
-func (e *Engine) cancel(cancelOrder *order.Order) (err error) {
-	var item queue.Item
-	if cancelOrder.IsBuy {
-		item = e.BuyQueue.Cancel(cancelOrder.CancelID)
-	} else {
-		item = e.SellQueue.Cancel(cancelOrder.CancelID)
-	}
-	if item == nil {
-		return
-	}
-	o := item.(*order.Order)
-	result := &order.MatchResult{
-		CancelID:  o.ID,
-		Price:     o.InitialPrice,
-		Amount:    o.RemainAmount,
-		MatchTime: e.LastOrderTime,
-		Symbol:    o.Symbol,
-	}
-	if cancelOrder.IsBuy {
-		result.BuyID = o.ID
-		result.BuyUserID = o.UserID
-	} else {
-		result.SellID = o.ID
-		result.SellUserID = o.UserID
-	}
-	e.MatchResultChan <- result
-
-	return
+func (e *Engine) Quotation()(data []byte){
+	e.lock.Lock()
+	defer e.lock.Unlock()
+	zero := common.NewZeroCopySink(nil, len(e.BuyQuotations)+len(e.SellQuotations))
+	zero.WriteUint32(uint32(len(e.BuyQuotations)))
+	zero.WriteBytes(e.BuyQuotations)
+	zero.WriteUint32(uint32(len(e.SellQuotations)))
+	zero.WriteBytes(e.SellQuotations)
+	return zero.Bytes()
 }
 
-func (e *Engine) match() (err error) {
+func (e *Engine) match(o *order.Order) (result []*order.Transaction) {
+	result = make([]*order.Transaction, 0, 2)
 	for {
-		buyItem := e.BuyQueue.First()
-		sellItem := e.SellQueue.First()
+		buyItem := e.BuyOrders.First()
+		sellItem := e.SellOrders.First()
 		if buyItem == nil || sellItem == nil {
 			return
 		}
 		buy := buyItem.(*order.Order)
 		sell := sellItem.(*order.Order)
 
-		matchResult := order.Match(e.LastMatchPrice, buy, sell, e.LastOrderTime)
-
-		if buy.RemainAmount == 0 || buy.Canceled {
-			e.BuyQueue.Pop()
+		matchResult := order.Match(e.LastMatchPrice, e.LastOrderTime, buy, sell, o.IsBuy)
+		if matchResult != nil {
+			result = append(result, matchResult)
+			if !buy.IsMarket {
+				e.BuyQuotations.SubAmount(matchResult.Price, matchResult.Amount)
+			}
+			if !sell.IsMarket {
+				e.SellQuotations.SubAmount(matchResult.Price, matchResult.Amount)
+			}
 		}
-		if sell.RemainAmount == 0 || sell.Canceled {
-			e.SellQueue.Pop()
+
+		if buy.RemainAmount == 0 {
+			e.BuyOrders.Pop()
+		}
+		if sell.RemainAmount == 0 {
+			e.SellOrders.Pop()
 		}
 		if matchResult == nil {
 			break
 		}
-		e.MatchResultChan <- matchResult
 	}
 	return
 }
 
-func (e *Engine) Serialize() (zero *common.ZeroCopySink) {
-	zero = common.NewZeroCopySink(nil, 64*int(e.BuyQueue.Len()+e.SellQueue.Len()))
+func (e *Engine) serialize() (zero *common.ZeroCopySink) {
+	zero = common.NewZeroCopySink(nil, 64*int(e.BuyOrders.Len()+e.SellOrders.Len()))
 	zero.WriteUint32(e.LastOrderID)
 	zero.WriteUint64(e.LastMatchPrice)
 	zero.WriteUint64(e.LastOrderTime)
 	zero.WriteString(e.Symbol)
-	buyData := e.BuyQueue.Serialize()
+	buyData := e.BuyOrders.Serialize()
 	zero.WriteVarBytes(buyData.Bytes())
-	sellData := e.SellQueue.Serialize()
+	sellData := e.SellOrders.Serialize()
 	zero.WriteVarBytes(sellData.Bytes())
+	//zero.WriteVarBytes(e.BuyQuotations)
+	//zero.WriteVarBytes(e.SellQuotations)
 	sum := md5.Sum(zero.Bytes())
 	zero.WriteVarBytes(sum[:])
 	return
@@ -222,8 +236,9 @@ func UnSerialize(data []byte, e *Engine) (err error) {
 	if eof {
 		return common.ErrTooLarge
 	}
-	e.BuyQueue = queue.NewPriorityList()
-	err = unSerializeList(buyBytes, e.BuyQueue.(*queue.PriorityList))
+	e.BuyOrders = queue.NewPriorityList()
+	e.BuyQuotations = order.NewQuotation(1000)
+	err = unSerializeList(buyBytes, e.BuyOrders.(*queue.PriorityList), e.BuyQuotations)
 	if err != nil {
 		return
 	}
@@ -235,8 +250,9 @@ func UnSerialize(data []byte, e *Engine) (err error) {
 	if eof {
 		return common.ErrTooLarge
 	}
-	e.SellQueue = queue.NewPriorityList()
-	err = unSerializeList(sellBytes, e.SellQueue.(*queue.PriorityList))
+	e.SellOrders = queue.NewPriorityList()
+	e.SellQuotations = order.NewQuotation(1000)
+	err = unSerializeList(sellBytes, e.SellOrders.(*queue.PriorityList), e.SellQuotations)
 	if err != nil {
 		return
 	}
@@ -257,13 +273,13 @@ func UnSerialize(data []byte, e *Engine) (err error) {
 	if eof {
 		return common.ErrTooLarge
 	}
-	if isByteSame(e.CheckSum, checkSum[:]) {
+	if common.IsByteSame(e.CheckSum, checkSum[:]) {
 		return common.ErrEngineCheckSum
 	}
 	return
 }
 
-func unSerializeList(data []byte, p *queue.PriorityList) (err error) {
+func unSerializeList(data []byte, orders *queue.PriorityList, quotations order.Quotation) (err error) {
 	var eof, irregular bool
 	var listType string
 	var count uint32
@@ -290,19 +306,8 @@ func unSerializeList(data []byte, p *queue.PriorityList) (err error) {
 		if err != nil {
 			return
 		}
-		p.Insert(o)
+		orders.Insert(o)
+		quotations.Insert(o)
 	}
 	return
-}
-
-func isByteSame(data1 []byte, data2 []byte) bool {
-	if len(data1) != len(data2) {
-		return false
-	}
-	for i := 0; i < len(data1); i++ {
-		if data1[i] != data2[2] {
-			return false
-		}
-	}
-	return true
 }

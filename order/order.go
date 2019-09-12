@@ -9,32 +9,28 @@ import (
 type Order struct {
 	RemainAmount  uint64
 	ID            uint32
-	CancelID      uint32
-	UserID        uint32
+	CancelOrderID uint32
 	OrderTime     uint64
 	InitialPrice  uint64
 	InitialAmount uint64
 	IsMarket      bool //market order or limit order
 	IsBuy         bool //buy order or sell order
-	Canceled      bool //canceled
 	Symbol        string
 	Data          *common.ZeroCopySink
 }
 
 //for print
-func (o *Order) String() string {
-	return fmt.Sprintf("\n"+
+func (o Order) String() string {
+	return fmt.Sprintf("order:\n"+
 		"ID: %d\n"+
-		"CancelID: %d\n"+
-		"UserID: %d\n"+
+		"CancelOrderID: %d\n"+
 		"OrderTime: %d\n"+
 		"InitialPrice: %d\n"+
 		"RemainAmount: %d\n"+
 		"IsMarket: %t\n"+
 		"IsBuy: %t\n"+
-		"Canceled: %t\n"+
 		"Symbol: %s\n",
-		o.ID, o.CancelID, o.UserID, o.OrderTime, o.InitialPrice, o.RemainAmount, o.IsMarket, o.IsBuy, o.Canceled, o.Symbol)
+		o.ID, o.CancelOrderID, o.OrderTime, o.InitialPrice, o.RemainAmount, o.IsMarket, o.IsBuy, o.Symbol)
 }
 
 //for queue.Item interface
@@ -87,11 +83,7 @@ func UnSerialize(data []byte, o *Order) (err error) {
 	if eof {
 		return common.ErrTooLarge
 	}
-	o.CancelID, eof = zero.NextUint32()
-	if eof {
-		return common.ErrTooLarge
-	}
-	o.UserID, eof = zero.NextUint32()
+	o.CancelOrderID, eof = zero.NextUint32()
 	if eof {
 		return common.ErrTooLarge
 	}
@@ -121,13 +113,6 @@ func UnSerialize(data []byte, o *Order) (err error) {
 	if eof {
 		return common.ErrTooLarge
 	}
-	o.Canceled, irregular, eof = zero.NextBool()
-	if irregular {
-		return common.ErrIrregularData
-	}
-	if eof {
-		return common.ErrTooLarge
-	}
 	o.Symbol, _, irregular, eof = zero.NextString()
 	if irregular {
 		return common.ErrIrregularData
@@ -142,61 +127,29 @@ func (o *Order) serialize() (zero *common.ZeroCopySink) {
 	zero = common.NewZeroCopySink(nil, 64)
 	zero.WriteUint64(o.RemainAmount)
 	zero.WriteUint32(o.ID)
-	zero.WriteUint32(o.CancelID)
-	zero.WriteUint32(o.UserID)
+	zero.WriteUint32(o.CancelOrderID)
 	zero.WriteUint64(o.OrderTime)
 	zero.WriteUint64(o.InitialPrice)
 	zero.WriteUint64(o.InitialAmount)
 	zero.WriteBool(o.IsMarket)
 	zero.WriteBool(o.IsBuy)
-	zero.WriteBool(o.Canceled)
 	zero.WriteString(o.Symbol)
 	return
 }
 
-type MatchResult struct {
-	CancelID   uint32
-	BuyID      uint32
-	SellID     uint32
-	BuyUserID  uint32
-	SellUserID uint32
-	MatchTime  uint64
-	Price      uint64
-	Amount     uint64
-	Symbol     string
-}
-
-//for print
-func (m *MatchResult) String() string {
-	return fmt.Sprintf("\n"+
-		"CancelID: %d\n"+
-		"BuyID: %d\n"+
-		"SellID: %d\n"+
-		"BuyUserID: %d\n"+
-		"SellUserID: %d\n"+
-		"MatchTime: %d\n"+
-		"Price: %d\n"+
-		"Amount: %d\n"+
-		"Symbol: %s\n",
-		m.CancelID, m.BuyID, m.SellID, m.BuyUserID, m.SellUserID, m.MatchTime, m.Price, m.Amount, m.Symbol)
-}
-
 //to do: use which price when buy.InitialPrice >= sell.InitialPrice
-func Match(lastPrice uint64, buy *Order, sell *Order, time uint64) (r *MatchResult) {
-	if buy.Canceled || sell.Canceled {
-		return nil
-	}
+//Direction ture = buy
+func Match(lastPrice uint64, time uint64, buy *Order, sell *Order, direction bool) (r *Transaction) {
 	if buy.RemainAmount == 0 || sell.RemainAmount == 0 {
 		return nil
 	}
 	var matchPrice, amount uint64
-	r = &MatchResult{
-		BuyID:      buy.ID,
-		SellID:     sell.ID,
-		BuyUserID:  buy.UserID,
-		SellUserID: sell.UserID,
-		Symbol:     buy.Symbol,
-		MatchTime:  time,
+	r = &Transaction{
+		BuyID:     buy.ID,
+		SellID:    sell.ID,
+		Symbol:    buy.Symbol,
+		MatchTime: time,
+		IsBuy:     direction,
 	}
 	if buy.IsMarket && sell.IsMarket {
 		matchPrice = lastPrice
@@ -212,7 +165,11 @@ func Match(lastPrice uint64, buy *Order, sell *Order, time uint64) (r *MatchResu
 		if buy.InitialPrice < sell.InitialPrice {
 			return nil
 		}
-		matchPrice = sell.InitialPrice
+		if direction {
+			matchPrice = sell.InitialPrice
+		} else {
+			matchPrice = buy.InitialPrice
+		}
 		amount = min(buy.RemainAmount, sell.RemainAmount)
 	}
 	r.Price = matchPrice

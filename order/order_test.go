@@ -13,14 +13,16 @@ func TestCompare1(t *testing.T) {
 	order1 = &Order{
 		IsMarket:     true,
 		InitialPrice: 2,
-		ID:           2,
+		Index:        2,
+		OrderID:      2,
 	}
 
 	//market and limit, always 1
 	order2 = &Order{
 		IsMarket:     false,
 		InitialPrice: 2,
-		ID:           2,
+		Index:        2,
+		OrderID:      2,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, 1, order2)
@@ -29,7 +31,8 @@ func TestCompare1(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     false,
 		InitialPrice: 3,
-		ID:           2,
+		Index:        2,
+		OrderID:      2,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, 1, order2)
@@ -38,7 +41,8 @@ func TestCompare1(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     true,
 		InitialPrice: 1,
-		ID:           2,
+		Index:        2,
+		OrderID:      2,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, 0, order2)
@@ -47,7 +51,8 @@ func TestCompare1(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     true,
 		InitialPrice: 3,
-		ID:           2,
+		Index:        2,
+		OrderID:      2,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, 0, order2)
@@ -56,7 +61,8 @@ func TestCompare1(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     true,
 		InitialPrice: 2,
-		ID:           1,
+		Index:        1,
+		OrderID:      1,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, -1, order2)
@@ -65,7 +71,8 @@ func TestCompare1(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     true,
 		InitialPrice: 2,
-		ID:           2,
+		Index:        2,
+		OrderID:      2,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, 0, order2)
@@ -74,7 +81,8 @@ func TestCompare1(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     true,
 		InitialPrice: 2,
-		ID:           3,
+		OrderID:      3,
+		Index:        3,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, 1, order2)
@@ -87,14 +95,16 @@ func TestCompare2(t *testing.T) {
 	order1 = &Order{
 		IsMarket:     false,
 		InitialPrice: 2,
-		ID:           2,
+		OrderID:      2,
+		Index:        2,
 	}
 
 	//market and limit, always -1
 	order2 = &Order{
 		IsMarket:     true,
 		InitialPrice: 2,
-		ID:           2,
+		OrderID:      2,
+		Index:        2,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, -1, order2)
@@ -103,7 +113,8 @@ func TestCompare2(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     true,
 		InitialPrice: 2,
-		ID:           2,
+		OrderID:      2,
+		Index:        2,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, -1, order2)
@@ -112,7 +123,8 @@ func TestCompare2(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     false,
 		InitialPrice: 1,
-		ID:           2,
+		OrderID:      2,
+		Index:        2,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, -1, order2)
@@ -121,7 +133,8 @@ func TestCompare2(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     false,
 		InitialPrice: 3,
-		ID:           2,
+		OrderID:      2,
+		Index:        2,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, 1, order2)
@@ -130,7 +143,8 @@ func TestCompare2(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     false,
 		InitialPrice: 2,
-		ID:           1,
+		OrderID:      1,
+		Index:        1,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, -1, order2)
@@ -139,7 +153,8 @@ func TestCompare2(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     false,
 		InitialPrice: 2,
-		ID:           3,
+		OrderID:      3,
+		Index:        3,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, 1, order2)
@@ -148,7 +163,8 @@ func TestCompare2(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     false,
 		InitialPrice: 2,
-		ID:           2,
+		OrderID:      2,
+		Index:        2,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, 0, order2)
@@ -157,21 +173,25 @@ func TestCompare2(t *testing.T) {
 func TestSerialize(t *testing.T) {
 	o1 := &Order{
 		RemainAmount:  434234434567,
-		ID:            243423534,
+		Index:         2423534,
+		IndexTime:     249999999999534,
+		OrderID:       243423534,
 		CancelOrderID: 43434,
 		OrderTime:     2083410,
 		InitialPrice:  343207710,
 		InitialAmount: 3430374723,
 		IsMarket:      true,
 		IsBuy:         false,
-		Symbol:        "usdt/btc",
+		Symbol:        "usdt-btc",
 	}
 	o2 := &Order{}
 	z := o1.Serialize()
 	err := UnSerialize(z.Bytes(), o2)
 	assert.Nil(t, err)
 	assert.Equal(t, o1.RemainAmount, o2.RemainAmount)
-	assert.Equal(t, o1.ID, o2.ID)
+	assert.Equal(t, o1.Index, o2.Index)
+	assert.Equal(t, o1.IndexTime, o2.IndexTime)
+	assert.Equal(t, o1.OrderID, o2.OrderID)
 	assert.Equal(t, o1.CancelOrderID, o2.CancelOrderID)
 	assert.Equal(t, o1.OrderTime, o2.OrderTime)
 	assert.Equal(t, o1.InitialPrice, o2.InitialPrice)

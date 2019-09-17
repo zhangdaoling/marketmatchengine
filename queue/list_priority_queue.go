@@ -30,12 +30,12 @@ func (e *Element) Prev() *Element {
 type PriorityList struct {
 	root   Element
 	len    uint32
-	search map[uint32]*Element
+	search map[uint64]*Element
 }
 
 func NewPriorityList() (p *PriorityList) {
 	p = &PriorityList{}
-	p.search = make(map[uint32]*Element, 100)
+	p.search = make(map[uint64]*Element, 100)
 	p.init()
 	return p
 }
@@ -49,31 +49,36 @@ func (p *PriorityList) init() *PriorityList {
 }
 
 //for PriorityQueue interface
-func (p *PriorityList) Insert(item Item) (i Item) {
-	if item == nil {
-		return nil
-	}
-	if _, ok := p.search[item.Key()]; ok {
-		return nil
-	}
+func (p *PriorityList) Search(key uint64) bool {
+	_, ok := p.search[key]
+	return ok
+}
+
+//for PriorityQueue interface
+func (p *PriorityList) Insert(item Item) Item {
+	/*
+		if _, ok := p.search[item.Key()]; ok {
+			return nil
+		}
+	*/
 	element := &p.root
 	for {
 		next := element.Next()
 		if next == nil {
 			p.insertAfter(item, element)
-			return
+			return item
 		}
 		if item.Compare(next.Value) >= 0 {
 			p.insertAfter(item, element)
-			return
+			return item
 		}
 		element = next
 	}
-	return
+	return item
 }
 
 //for PriorityQueue interface
-func (p *PriorityList) Cancel(key uint32) (item Item) {
+func (p *PriorityList) Cancel(key uint64) (item Item) {
 	if element, ok := p.search[key]; ok {
 		delete(p.search, key)
 		p.remove(element)

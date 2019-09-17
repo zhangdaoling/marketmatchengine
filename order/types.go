@@ -3,24 +3,26 @@ package order
 import "fmt"
 
 type Transaction struct {
-	CancelID   uint32
-	BuyID      uint32
-	SellID     uint32
-	BuyUserID  uint32
-	SellUserID uint32
-	MatchTime  uint64
-	Price      uint64
-	Amount     uint64
-	IsBuy      bool //direction
-	Symbol     string
+	BuyIndex    uint64
+	SellIndex   uint64
+	BuyOrderID  uint64
+	SellOrderID uint64
+	BuyUserID   uint64
+	SellUserID  uint64
+	MatchTime   uint64
+	Price       uint64
+	Amount      uint64
+	IsBuy       bool //direction
+	Symbol      string
 }
 
 //for print
 func (t Transaction) String() string {
 	return fmt.Sprintf("Transaction \n"+
-		"CancelOrderID: %d\n"+
-		"BuyID: %d\n"+
-		"SellID: %d\n"+
+		"BuyIndex: %d\n"+
+		"SellIndex: %d\n"+
+		"BuyOrderID: %d\n"+
+		"SellOrderID: %d\n"+
 		"BuyUserID: %d\n"+
 		"SellUserID: %d\n"+
 		"MatchTime: %d\n"+
@@ -28,13 +30,14 @@ func (t Transaction) String() string {
 		"Amount: %d\n"+
 		"IsBuy: %t\n"+
 		"Symbol: %s\n",
-		t.CancelID, t.BuyID, t.SellID, t.BuyUserID, t.SellUserID, t.MatchTime, t.Price, t.Amount, t.IsBuy, t.Symbol)
+		t.BuyIndex, t.SellIndex, t.BuyOrderID, t.SellOrderID, t.BuyUserID, t.SellUserID, t.MatchTime, t.Price, t.Amount, t.IsBuy, t.Symbol)
 }
 
 type CancelOrder struct {
-	ID            uint32
-	CancelOrderID uint32
-	UserID        uint32
+	Index         uint64
+	OrderID       uint64
+	CancelOrderID uint64
+	UserID        uint64
 	MatchTime     uint64
 	Price         uint64
 	Amount        uint64
@@ -45,7 +48,8 @@ type CancelOrder struct {
 //for print
 func (c CancelOrder) String() string {
 	return fmt.Sprintf("CancelOrder \n"+
-		"ID: %d\n"+
+		"Index： %d\n"+
+		"OrderID: %d\n"+
 		"CancelOrderID: %d\n"+
 		"UserID: %d\n"+
 		"MatchTime: %d\n"+
@@ -53,5 +57,5 @@ func (c CancelOrder) String() string {
 		"Amount: %d\n"+
 		"IsBuy: %t\n"+
 		"Symbol: %s\n",
-		c.ID, c.CancelOrderID, c.UserID, c.MatchTime, c.Price, c.Amount, c.IsBuy, c.Symbol)
+		c.Index, c.OrderID, c.CancelOrderID, c.UserID, c.MatchTime, c.Price, c.Amount, c.IsBuy, c.Symbol)
 }

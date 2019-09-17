@@ -10,7 +10,7 @@ import (
 
 type order struct {
 	Number int
-	ID     uint32
+	ID     uint64
 }
 
 func (o *order) Compare(i interface{}) int {
@@ -24,7 +24,7 @@ func (o *order) Compare(i interface{}) int {
 	}
 }
 
-func (o *order) Key() uint32 {
+func (o *order) Key() uint64 {
 	return o.ID
 }
 

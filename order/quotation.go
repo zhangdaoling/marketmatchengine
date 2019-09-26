@@ -24,20 +24,30 @@ func (q QuotationSlice) String() string {
 	return fmt.Sprint("Quotation \n")
 }
 
-func (q *QuotationSlice) Insert(isBuy bool, price uint64, amount uint64) {
-	var index int
+//index is the position
+func (q *QuotationSlice) BinarySearch(isBuy bool, price uint64) (isExist bool, index int, amount uint64) {
 	length := len(q.Data) / 2
 	if isBuy {
 		index = binarySearch(length, func(i int) bool { return q.Data[2*i] >= price })
 	} else {
 		index = binarySearch(length, func(i int) bool { return q.Data[2*i] <= price })
 	}
-
 	if index < length && q.Data[2*index] == price { //find the price
+		return true, index, q.Data[2*index+1]
+	}
+	// not found
+	return false, index, amount
+}
+
+//QuotationSlice must the same with isBuy
+func (q *QuotationSlice) Insert(isBuy bool, price uint64, amount uint64) {
+	isExist, index, _ := q.BinarySearch(isBuy, price)
+	length := len(q.Data) / 2
+	if isExist {
 		q.Data[2*index+1] += amount
-	} else if index == length { // not found price, add to the tail
+	} else if index == length {
 		q.Data = append(q.Data, price, amount)
-	} else { //not found price, rebuild slice
+	} else {
 		q.Data = append(q.Data, 0, 0)
 		copy(q.Data[2*index+2:2*length+2], q.Data[2*index:2*length])
 		q.Data[2*index] = price
@@ -46,31 +56,19 @@ func (q *QuotationSlice) Insert(isBuy bool, price uint64, amount uint64) {
 	return
 }
 
-func (q *QuotationSlice) SubAmount(price uint64, amount uint64, isBuy bool) (isExist bool, err error) {
-	if len(q.Data) == 0 {
-		return false, nil
-	}
-	var index int
+//use search before subAmount
+//QuotationSlice must the same with isBuy
+//amount <= sliceAmount; index < length
+func (q *QuotationSlice) SubAmount(index int, amount uint64) {
 	length := len(q.Data) / 2
-	if isBuy {
-		index = binarySearch(length, func(i int) bool { return q.Data[2*i] >= price })
-	} else {
-		index = binarySearch(length, func(i int) bool { return q.Data[2*i] <= price })
-	}
-	if index < length && q.Data[2*index] == price { //find the price
-		if q.Data[2*index+1] < amount {
-			return false, common.ErrQuotationAmount
+	q.Data[2*index+1] -= amount
+	if q.Data[2*index+1] == 0 { //rebuild slice
+		if index != length-1 {
+			copy(q.Data[2*index:2*length-2], q.Data[2*index+2:2*length])
 		}
-		q.Data[2*index+1] -= amount
-		if q.Data[2*index+1] == 0 { //rebuild slice
-			if 2*index != length-2 {
-				copy(q.Data[2*index:2*length], q.Data[2*index+2:2*length+2])
-			}
-			q.Data = q.Data[0 : 2*length-2]
-		}
-		return true, nil
+		q.Data = q.Data[0 : 2*length-2]
 	}
-	return false, nil
+	return
 }
 
 func (q *QuotationSlice) Serialize(zero *common.ZeroCopySink) {
@@ -80,6 +78,7 @@ func (q *QuotationSlice) Serialize(zero *common.ZeroCopySink) {
 	}
 }
 
+//copy from sort.BinarySearch(), no test
 func binarySearch(n int, f func(int) bool) int {
 	var i, j, h int
 	i = 0

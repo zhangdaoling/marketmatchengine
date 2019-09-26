@@ -28,7 +28,7 @@ func producer() {
 			return
 		}
 		msg := &sarama.ProducerMessage{
-			Topic: "usdt-btc",
+			Topic: "A-B",
 			Value: sarama.ByteEncoder(b),
 		}
 		partition, offset, err := producer.SendMessage(msg)

@@ -1,0 +1,47 @@
+CREATE TABLE user_balance (
+  id      INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id INT(10) UNSIGNED NOT NULL,
+  symbol  VARCHAR(16)     NOT NULL,
+  amount  DECIMAL(65, 0)   NOT NULL DEFAULT '0',
+  created TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY (user_id, symbol),
+  KEY (user_id),
+  KEY (symbol)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8;
+
+CREATE TABLE orders (
+  id        INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id   INT(10) UNSIGNED NOT NULL,
+  symbol    VARCHAR(255)     NOT NULL,
+  amount    DECIMAL(65, 0)   NOT NULL DEFAULT '0',
+  price     DECIMAL(65, 0)   NOT NULL DEFAULT '0',
+  is_market TINYINT(1)       NOT NULL,
+  is_buy    TINYINT(1)       NOT NULL,
+  created   TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated   TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY (user_id, symbol),
+  KEY (symbol)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8;
+
+CREATE TABLE transactions (
+  id            INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  buy_index     BIGINT UNSIGNED  NOT NULL,
+  sell_index    BIGINT UNSIGNED  NOT NULL,
+  buy_order_id  BIGINT UNSIGNED  NOT NULL,
+  sell_order_id BIGINT UNSIGNED  NOT NULL,
+  buy_user_id   BIGINT UNSIGNED  NOT NULL,
+  sell_user_id  BIGINT UNSIGNED  NOT NULL,
+  match_time    BIGINT UNSIGNED  NOT NULL,
+  amount        DECIMAL(65, 0)   NOT NULL DEFAULT '0',
+  price         DECIMAL(65, 0)   NOT NULL DEFAULT '0',
+  created       TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated       TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY (buy_order_id, sell_order_id),
+  KEY(buy_order_id),
+  KEY(sell_order_id)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8;
+

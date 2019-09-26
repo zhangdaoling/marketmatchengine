@@ -3,17 +3,17 @@ package order
 import "fmt"
 
 type Transaction struct {
-	BuyIndex    uint64
-	SellIndex   uint64
-	BuyOrderID  uint64
-	SellOrderID uint64
-	BuyUserID   uint64
-	SellUserID  uint64
-	MatchTime   uint64
-	Price       uint64
-	Amount      uint64
-	IsBuy       bool //direction
-	Symbol      string
+	BuyIndex    uint64 `json:"buy_index"`
+	SellIndex   uint64 `json:"sell_indxe"`
+	BuyOrderID  uint64 `json:"buy_order_id"`
+	SellOrderID uint64 `json:"sell_order_id"`
+	BuyUserID   uint64 `json:"buy_user_id"`
+	SellUserID  uint64 `json:"sell_user_id"`
+	MatchTime   uint64 `json:"match_time"`
+	Price       uint64 `json:"price"`
+	Amount      uint64 `json:"amount"`
+	IsBuy       bool   `json:"is_buy"` //direction
+	Symbol      string `json:"symbol"`
 }
 
 //for print

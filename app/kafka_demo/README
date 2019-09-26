@@ -1,0 +1,9 @@
+使用kafka传输信息和收集信息
+订单：每个symbol一个topic，一个patition
+交易：可以共用topic，partition
+行情：可以共用topic，partition
+
+使用方法：
+1、安装kafka：https://kafka.apache.org/quickstart
+
+2、使用脚本kafka/init_match_topic.sh初始化topic，请设置好kafka的path路径

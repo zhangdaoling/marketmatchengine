@@ -11,12 +11,13 @@ type Order struct {
 	Index         uint64 `json:"index"`
 	IndexTime     uint64 `json:"index_time"`
 	OrderID       uint64 `json:"order_id"`
-	CancelOrderID uint64 `json:"cancel_order_id"`
 	OrderTime     uint64 `json:"order_time"`
+	UserID        uint64 `json:"user_id"`
 	InitialPrice  uint64 `json:"price"`
 	InitialAmount uint64 `json:"amount"`
-	IsMarket      bool   `json:"is_market"` //market order or limit order
-	IsBuy         bool   `json:"is_buy"`    //buy order or sell order
+	CancelOrderID uint64 `json:"cancel_order_id"` //cancel order if value !=0
+	IsMarket      bool   `json:"is_market"`       //market order or limit order
+	IsBuy         bool   `json:"is_buy"`          //buy order or sell order
 	Symbol        string `json:"symbol"`
 	Data          *common.ZeroCopySink
 }
@@ -24,22 +25,24 @@ type Order struct {
 //for print
 func (o Order) String() string {
 	return fmt.Sprintf("order:\n"+
+		"RemainAmount: %d\n"+
 		"Index: %d\n"+
 		"IndexTime: %d\n"+
 		"OrderID: %d\n"+
-		"CancelOrderID: %d\n"+
 		"OrderTime: %d\n"+
+		"UserID: %d\n"+
 		"InitialPrice: %d\n"+
-		"RemainAmount: %d\n"+
+		"InitialAmount: %d\n"+
+		"CancelOrderID: %d\n"+
 		"IsMarket: %t\n"+
 		"IsBuy: %t\n"+
 		"Symbol: %s\n",
-		o.Index, o.IndexTime, o.OrderID, o.CancelOrderID, o.OrderTime, o.InitialPrice, o.RemainAmount, o.IsMarket, o.IsBuy, o.Symbol)
+		o.RemainAmount, o.Index, o.IndexTime, o.OrderID, o.OrderTime, o.UserID, o.InitialPrice, o.InitialAmount, o.CancelOrderID, o.IsMarket, o.IsBuy, o.Symbol)
 }
 
 //for queue.Item interface
 //market first, price second, id third
-//both must be buy or sell
+//make sure: both are buy or sell
 func (o *Order) Compare(item interface{}) int {
 	i := item.(*Order)
 	if o.IsMarket && i.IsMarket {
@@ -95,11 +98,11 @@ func UnSerialize(data []byte, o *Order) (err error) {
 	if eof {
 		return common.ErrTooLarge
 	}
-	o.CancelOrderID, eof = zero.NextUint64()
+	o.OrderTime, eof = zero.NextUint64()
 	if eof {
 		return common.ErrTooLarge
 	}
-	o.OrderTime, eof = zero.NextUint64()
+	o.UserID, eof = zero.NextUint64()
 	if eof {
 		return common.ErrTooLarge
 	}
@@ -108,6 +111,10 @@ func UnSerialize(data []byte, o *Order) (err error) {
 		return common.ErrTooLarge
 	}
 	o.InitialAmount, eof = zero.NextUint64()
+	if eof {
+		return common.ErrTooLarge
+	}
+	o.CancelOrderID, eof = zero.NextUint64()
 	if eof {
 		return common.ErrTooLarge
 	}
@@ -141,10 +148,11 @@ func (o *Order) serialize() (zero *common.ZeroCopySink) {
 	zero.WriteUint64(o.Index)
 	zero.WriteUint64(o.IndexTime)
 	zero.WriteUint64(o.OrderID)
-	zero.WriteUint64(o.CancelOrderID)
 	zero.WriteUint64(o.OrderTime)
+	zero.WriteUint64(o.UserID)
 	zero.WriteUint64(o.InitialPrice)
 	zero.WriteUint64(o.InitialAmount)
+	zero.WriteUint64(o.CancelOrderID)
 	zero.WriteBool(o.IsMarket)
 	zero.WriteBool(o.IsBuy)
 	zero.WriteString(o.Symbol)
@@ -153,6 +161,7 @@ func (o *Order) serialize() (zero *common.ZeroCopySink) {
 
 //to do: use which price when buy.InitialPrice >= sell.InitialPrice
 //Direction ture = buy
+//caller must make sure: buy is buyOrder; sell is sellOrder; buy.Symbol = sell.Symbol;
 func Match(lastPrice uint64, time uint64, buy *Order, sell *Order, direction bool) (r *Transaction) {
 	if buy.RemainAmount == 0 || sell.RemainAmount == 0 {
 		return nil
@@ -163,20 +172,21 @@ func Match(lastPrice uint64, time uint64, buy *Order, sell *Order, direction boo
 		SellIndex:   sell.Index,
 		BuyOrderID:  buy.OrderID,
 		SellOrderID: sell.OrderID,
+		BuyUserID:   buy.UserID,
+		SellUserID:  sell.UserID,
 		Symbol:      buy.Symbol,
 		MatchTime:   time,
 		IsBuy:       direction,
 	}
+	amount = min(buy.RemainAmount, sell.RemainAmount)
 	if buy.IsMarket && sell.IsMarket {
 		matchPrice = lastPrice
-		amount = min(buy.RemainAmount, sell.RemainAmount)
 	} else if buy.IsMarket {
 		matchPrice = sell.InitialPrice
-		amount = min(buy.RemainAmount, sell.RemainAmount)
 	} else if sell.IsMarket {
 		matchPrice = buy.InitialPrice
-		amount = min(buy.RemainAmount, sell.RemainAmount)
 	} else {
+		//no match result
 		if buy.InitialPrice < sell.InitialPrice {
 			return nil
 		}
@@ -185,12 +195,9 @@ func Match(lastPrice uint64, time uint64, buy *Order, sell *Order, direction boo
 		} else {
 			matchPrice = buy.InitialPrice
 		}
-		amount = min(buy.RemainAmount, sell.RemainAmount)
 	}
 	r.Price = matchPrice
 	r.Amount = amount
-	buy.RemainAmount -= amount
-	sell.RemainAmount -= amount
 	return r
 }
 

@@ -37,7 +37,7 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	orderConsumer, err := NewKafkaOrderConsumer(brokers, OrderTopic, Symbol, 0, 100)
+	orderConsumer, err := NewKafkaConsumer(brokers, OrderTopic, Symbol, 0, 100, int64(match.LastIndex))
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -91,7 +91,7 @@ func doLoopJobs(jobs ...Job) {
 type App struct {
 	PersistPath     string
 	Engine          *engine.Engine
-	OrderChan       chan *order.Order
+	OrderChan       chan *sarama.ConsumerMessage
 	TransactionChan chan []*order.Transaction
 	QuotationChan   chan *order.Quotation
 }
@@ -110,18 +110,32 @@ func (a *App) Loop(shutdown chan struct{}) {
 			}
 			return
 
-		case o := <-a.OrderChan:
-			result, isSuccessed, err := a.Engine.Match(o)
+		case msg := <-a.OrderChan:
+			o := &order.Order{}
+			err = json.Unmarshal(msg.Value, o)
+			if err != nil {
+				log.Printf("json marshal error: %v\n", err)
+				continue
+			}
+			if o.Symbol != a.Engine.Symbol {
+				log.Printf("symbol error: %s!=%s\n", o.Symbol, a.Engine.Symbol)
+				continue
+			}
+			o.Index = uint64(msg.Offset)
+			//log.Println(msg.Timestamp)
+			//log.Println(msg.Timestamp.Unix())
+			o.IndexTime = uint64(msg.Timestamp.Unix())
+			result, isNext, err := a.Engine.Match(o)
 			if err != nil {
 				log.Println(err)
 				close(shutdown)
 				return
 			}
-			if !isSuccessed {
+			if !isNext {
 				close(shutdown)
 			}
 			if len(result) != 0 {
-				log.Println(result)
+				//log.Println(result)
 				a.TransactionChan <- result
 			}
 
@@ -139,38 +153,38 @@ func (a *App) Loop(shutdown chan struct{}) {
 	}
 }
 
-type KafkaOrderConsumer struct {
+type KafkaConsumer struct {
 	KafkaBrokers      []string
 	Topic             string
 	Symbol            string
 	Key               string
 	Consumer          sarama.Consumer
 	PartitionConsumer sarama.PartitionConsumer
-	Channel           chan *order.Order
+	Channel           chan *sarama.ConsumerMessage
 }
 
-func NewKafkaOrderConsumer(brokers []string, topic string, symbol string, partition int32, size int) (consumer *KafkaOrderConsumer, err error) {
+func NewKafkaConsumer(brokers []string, topic string, symbol string, partition int32, size int, offset int64) (consumer *KafkaConsumer, err error) {
 	c, err := sarama.NewConsumer(brokers, nil)
 	if err != nil {
 		return nil, err
 	}
-	partitionConsumer, err := c.ConsumePartition(topic, partition, 0)
+	partitionConsumer, err := c.ConsumePartition(topic, partition, int64(offset))
 	if err != nil {
 		return nil, err
 	}
-	consumer = &KafkaOrderConsumer{
+	consumer = &KafkaConsumer{
 		KafkaBrokers:      brokers,
 		Topic:             topic,
 		Symbol:            symbol,
 		Key:               topic,
 		Consumer:          c,
 		PartitionConsumer: partitionConsumer,
-		Channel:           make(chan *order.Order, size),
+		Channel:           make(chan *sarama.ConsumerMessage, size),
 	}
 	return
 }
 
-func (c *KafkaOrderConsumer) Loop(shutdown chan struct{}) {
+func (c *KafkaConsumer) Loop(shutdown chan struct{}) {
 	var err error
 	for {
 		select {
@@ -185,16 +199,8 @@ func (c *KafkaOrderConsumer) Loop(shutdown chan struct{}) {
 			return
 		case msg := <-c.PartitionConsumer.Messages():
 			log.Printf("Consumed message offset %d\n", msg.Offset)
-			o := &order.Order{}
-			err = json.Unmarshal(msg.Value, o)
-			if err != nil {
-				log.Printf("json marshal error:", err)
-				close(shutdown)
-				return
-			}
-			o.Index = uint64(msg.Offset)
-			o.IndexTime = uint64(msg.Timestamp.Nanosecond())
-			c.Channel <- o
+
+			c.Channel <- msg
 		}
 	}
 }
@@ -253,7 +259,7 @@ func (p *KafkaTransactionProducer) Loop(shutdown chan struct{}) {
 				close(shutdown)
 				return
 			} else {
-				log.Printf("order message sent to partition %d at offset %d\n", partition, offset)
+				log.Printf("transaction message sent to partition %d at offset %d\n", partition, offset)
 			}
 		}
 	}

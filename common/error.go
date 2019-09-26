@@ -14,3 +14,5 @@ var ErrSymbol = errors.New("symbol err")
 var ErrQuotationAmount = errors.New("amount is error after sub")
 
 var ErrNotExist = errors.New("price is not exist int quotation slice")
+
+var ErrAmount = errors.New("amount < 0")

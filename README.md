@@ -11,7 +11,17 @@ marketmatch engine for golang;
 see "TestEngine" in engine/engine_test.go
 
 
-
-
-
 0.0.0.0         account.jetbrains.com
+
+
+# to do
+*去重队列
+*test: kafka_demo simple test: pass
+*kafka message timestamp
+*test:market order test
+*test:order match test: pass
+*test:quotation array test:pass
+*test:cancel order
+*more order type
+*log
+

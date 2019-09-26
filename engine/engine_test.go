@@ -8,6 +8,7 @@ import (
 	"github.com/zhangdaoling/marketmatchengine/queue"
 	"log"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -17,24 +18,25 @@ var orderIDIndex uint64
 var buyOrders, sellOrders []*order.Order
 var result []*order.Transaction
 
+//to do, not complete
 func TestMatch(t *testing.T) {
 	orderIDIndex = 1
-	initBuy(4)
-	initSell(4)
-	e, err := NewEngine("usdt-btc", 0, 0, 100)
+	initBuy(10)
+	initSell(10)
+	e, err := NewEngine("A-B", 0, 0, 100)
 	assert.Nil(t, err)
+	t.Logf("%v\n", time.Now())
 	for _, o := range buyOrders {
-		t.Logf("order: %v\n", o)
-		r, _, err := e.Match(o)
+		_, _, err := e.Match(o)
 		assert.Nil(t, err)
-		t.Logf("%v\n", r)
+		//t.Logf("%v\n", r)
 	}
 	for _, o := range sellOrders {
-		t.Logf("order: %v\n", o)
-		r, _, err := e.Match(o)
+		_, _, err := e.Match(o)
 		assert.Nil(t, err)
-		t.Logf("%v\n", r)
+		//t.Logf("%v\n", r)
 	}
+	t.Logf("%v\n", time.Now())
 	fmt.Println("xxxx")
 }
 
@@ -47,7 +49,7 @@ func TestPersit(t *testing.T) {
 	orderIDIndex = 1
 	initBuy(2)
 	initSell(2)
-	e1, err := NewEngine("usdt-btc", 100, 100, 100)
+	e1, err := NewEngine("A-B", 100, 100, 100)
 	assert.Nil(t, err)
 	e1.BuyOrders = queue.NewPriorityList()
 	e1.SellOrders = queue.NewPriorityList()
@@ -74,7 +76,7 @@ func TestSerialize(t *testing.T) {
 	orderIDIndex = 1
 	initBuy(2)
 	initSell(2)
-	e1, err := NewEngine("usdt-btc", 100, 100, 100)
+	e1, err := NewEngine("A-B", 100, 100, 100)
 	assert.Nil(t, err)
 	e1.BuyOrders = queue.NewPriorityList()
 	e1.SellOrders = queue.NewPriorityList()
@@ -89,7 +91,7 @@ func TestSerialize(t *testing.T) {
 
 	zero := e1.serialize()
 	t.Logf("size: %d \n", len(zero.Bytes()))
-	e2, err := NewEngine("usdt-btc", 100, 100, 100)
+	e2, err := NewEngine("A-B", 100, 100, 100)
 	err = UnSerialize(zero.Bytes(), e2)
 	assert.Nil(t, err)
 	euqalEngine(t, e1, e2)
@@ -149,23 +151,25 @@ func equalOrder(t *testing.T, o1 *order.Order, o2 *order.Order) {
 	assert.Equal(t, o1.Index, o2.Index)
 	assert.Equal(t, o1.IndexTime, o2.IndexTime)
 	assert.Equal(t, o1.OrderID, o2.OrderID)
-	assert.Equal(t, o1.CancelOrderID, o2.CancelOrderID)
 	assert.Equal(t, o1.OrderTime, o2.OrderTime)
+	assert.Equal(t, o1.UserID, o2.UserID)
 	assert.Equal(t, o1.InitialPrice, o2.InitialPrice)
 	assert.Equal(t, o1.InitialAmount, o2.InitialAmount)
+	assert.Equal(t, o1.CancelOrderID, o2.CancelOrderID)
 	assert.Equal(t, o1.IsMarket, o2.IsMarket)
 	assert.Equal(t, o1.IsBuy, o2.IsBuy)
 	assert.Equal(t, o1.Symbol, o2.Symbol)
 }
 
 func initBuy(length int) {
-	symbol := "usdt-btc"
+	symbol := "A-B"
 	buyOrders = make([]*order.Order, 0, length)
 	for i := 0; i < length/2; i++ {
 		o := &order.Order{
 			Index:         orderIDIndex,
 			OrderID:       orderIDIndex,
 			OrderTime:     2000000 + uint64(orderIDIndex),
+			UserID:        orderIDIndex,
 			InitialPrice:  1 + 2*uint64(i),
 			InitialAmount: 10,
 			RemainAmount:  10,
@@ -180,7 +184,8 @@ func initBuy(length int) {
 			Index:         orderIDIndex,
 			OrderID:       orderIDIndex,
 			OrderTime:     2000000 + uint64(orderIDIndex),
-			InitialPrice:  2 + 2*uint64(i),
+			UserID:        orderIDIndex,
+			InitialPrice:  uint64(length - i),
 			InitialAmount: 10,
 			RemainAmount:  10,
 			IsBuy:         true,
@@ -193,13 +198,14 @@ func initBuy(length int) {
 }
 
 func initSell(length int) (orders []*order.Order) {
-	symbol := "usdt-btc"
+	symbol := "A-B"
 	sellOrders = make([]*order.Order, 0, length)
 	for i := 0; i < length/2; i++ {
 		o := &order.Order{
 			Index:         orderIDIndex,
 			OrderID:       orderIDIndex,
 			OrderTime:     2000000 + uint64(orderIDIndex),
+			UserID:        orderIDIndex,
 			InitialPrice:  1 + 2*uint64(i+length),
 			InitialAmount: 10,
 			RemainAmount:  10,
@@ -214,7 +220,8 @@ func initSell(length int) (orders []*order.Order) {
 			Index:         orderIDIndex,
 			OrderID:       orderIDIndex,
 			OrderTime:     2000000 + uint64(orderIDIndex),
-			InitialPrice:  2 + 2*uint64(i),
+			UserID:        orderIDIndex,
+			InitialPrice:  2 + 2*uint64(length/2-i),
 			InitialAmount: 5,
 			RemainAmount:  5,
 			IsBuy:         false,
@@ -226,10 +233,11 @@ func initSell(length int) (orders []*order.Order) {
 	return
 }
 
+//push order to kafka
 func TestData(t *testing.T) {
 	orderIDIndex = 1
-	initBuy(1000)
-	initSell(1000)
+	initBuy(50000)
+	initSell(50000)
 	buyOrders = append(buyOrders, sellOrders...)
 
 	producer, err := sarama.NewSyncProducer([]string{"localhost:9092"}, nil)
@@ -249,8 +257,9 @@ func TestData(t *testing.T) {
 			return
 		}
 		msg := &sarama.ProducerMessage{
-			Topic: "order_usdt-btc",
-			Value: sarama.ByteEncoder(b),
+			Topic:     "order_A-B",
+			Value:     sarama.ByteEncoder(b),
+			Timestamp: time.Now(),
 		}
 		partition, offset, err := producer.SendMessage(msg)
 		if err != nil {

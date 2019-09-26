@@ -61,29 +61,43 @@ func (e *Engine) GetIndex() (index uint64) {
 	return
 }
 
-func (e *Engine) Match(o *order.Order) (result []*order.Transaction, success bool, err error) {
+func (e *Engine) update(o *order.Order) {
+	e.LastIndex = o.Index
+	e.LastIndexTime = o.OrderTime
+	e.LastOrderID = o.OrderID
+	e.LastOrderTime = o.OrderTime
+}
+
+func (e *Engine) Match(o *order.Order) (result []*order.Transaction, next bool, err error) {
 	if o == nil {
 		log.Printf("error: nil order\n")
-		return nil, false, nil
+		return nil, true, nil
 	}
 	if o.Symbol != e.Symbol {
 		log.Printf("index: %d, id: %d, error: symbol: %s != %s\n", o.Index, o.OrderID, o.Symbol, e.Symbol)
-		return nil, false, common.ErrSymbol
+		return nil, true, common.ErrSymbol
 	}
 	if o.Index <= e.LastIndex && e.LastIndex != 0 {
 		log.Printf("index: %d, id: %d, warn: skip older order index: %d, current orderIndex: %d\n", o.Index, o.OrderID, o.Index, e.LastIndex)
-		return nil, false, nil
+		return nil, true, nil
+	}
+	if o.InitialAmount < 0 {
+		log.Printf("index: %d, id: %d, warn: amount<0 , current orderIndex: %d, engineIndex: %d\n", o.Index, o.OrderID, o.Index, e.LastIndex)
+		return nil, true, nil
+	}
+	if o.InitialAmount == 0 {
+		log.Printf("index: %d, id: %d, warn: amount=0 , current orderIndex: %d, engineIndex: %d\n", o.Index, o.OrderID, o.Index, e.LastIndex)
+		return nil, true, nil
 	}
 
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
-	log.Printf("match order: %v\n", o)
 	o.RemainAmount = o.InitialAmount
 	if o.IsBuy {
 		if e.BuyOrders.Search(o.OrderID) {
 			log.Printf("warn: skip same index: %d, id: %d\n", o.Index, o.OrderID)
-			return nil, false, nil
+			return nil, true, nil
 		}
 		e.BuyOrders.Insert(o)
 		if !o.IsMarket {
@@ -92,7 +106,7 @@ func (e *Engine) Match(o *order.Order) (result []*order.Transaction, success boo
 	} else {
 		if e.SellOrders.Search(o.OrderID) {
 			log.Printf("warn: skip same index: %d, id: %d\n", o.Index, o.OrderID)
-			return nil, false, nil
+			return nil, true, nil
 		}
 		e.SellOrders.Insert(o)
 		if !o.IsMarket {
@@ -104,80 +118,74 @@ func (e *Engine) Match(o *order.Order) (result []*order.Transaction, success boo
 		log.Fatalf("error: engine match err: %s\n", err)
 		return nil, false, err
 	}
-	e.LastIndex = o.Index
-	e.LastIndexTime = o.OrderTime
-	e.LastOrderID = o.Index
-	e.LastOrderTime = o.OrderTime
+	e.update(o)
 	return result, true, nil
 }
 
 //to do 如果取消的订单找不到怎么办，需同样需要返回数据，要不然取消订单会一直等
 func (e *Engine) Cancel(cancelOrder *order.Order) (result *order.CancelOrder, currentOrderID uint64, err error) {
-	if cancelOrder == nil {
-		log.Printf("error: nil order\n")
-		return nil, e.LastIndex, nil
-	}
-	if cancelOrder.Symbol != e.Symbol {
-		log.Printf("index: %d, id: %d, error: symbol: %s != %s\n", cancelOrder.Index, cancelOrder.OrderID, cancelOrder.Symbol, e.Symbol)
-		return nil, e.LastIndex, common.ErrSymbol
-	}
-	if cancelOrder.Index <= e.LastIndex && e.LastIndex != 0 {
-		log.Printf("index: %d, id: %d, warn: skip older order index: %d, current orderIndex: %d\n", cancelOrder.Index, cancelOrder.OrderID, cancelOrder.Index, e.LastIndex)
-		return nil, e.LastIndex, nil
-	}
+	/*
+		if cancelOrder == nil {
+			log.Printf("error: nil order\n")
+			return nil, e.LastIndex, nil
+		}
+		if cancelOrder.Symbol != e.Symbol {
+			log.Printf("index: %d, id: %d, error: symbol: %s != %s\n", cancelOrder.Index, cancelOrder.OrderID, cancelOrder.Symbol, e.Symbol)
+			return nil, e.LastIndex, common.ErrSymbol
+		}
+		if cancelOrder.Index <= e.LastIndex && e.LastIndex != 0 {
+			log.Printf("index: %d, id: %d, warn: skip older order index: %d, current orderIndex: %d\n", cancelOrder.Index, cancelOrder.OrderID, cancelOrder.Index, e.LastIndex)
+			return nil, e.LastIndex, nil
+		}
 
-	e.lock.Lock()
-	defer e.lock.Unlock()
+		e.lock.Lock()
+		defer e.lock.Unlock()
 
-	log.Printf("cancel order: %v\n", cancelOrder)
-	item := e.BuyOrders.Cancel(cancelOrder.CancelOrderID)
-	if item == nil {
-		item = e.SellOrders.Cancel(cancelOrder.CancelOrderID)
-	}
-	if item == nil {
-		e.LastIndex = cancelOrder.Index
-		e.LastIndexTime = cancelOrder.IndexTime
-		e.LastOrderID = cancelOrder.OrderID
-		e.LastOrderTime = cancelOrder.OrderTime
+		log.Printf("cancel order: %v\n", cancelOrder)
+		item := e.BuyOrders.Cancel(cancelOrder.CancelOrderID)
+		if item == nil {
+			item = e.SellOrders.Cancel(cancelOrder.CancelOrderID)
+		}
+		if item == nil {
+			e.update(cancelOrder)
+			return nil, e.LastIndex, nil
+		}
+		o := item.(*order.Order)
+		result = &order.CancelOrder{
+			OrderID:       cancelOrder.OrderID,
+			CancelOrderID: o.OrderID,
+			MatchTime:     cancelOrder.OrderTime,
+			Price:         o.InitialPrice,
+			Amount:        o.RemainAmount,
+			IsBuy:         o.IsBuy,
+			Symbol:        o.Symbol,
+		}
+
+		if result.IsBuy {
+			isExist, err := e.BuyQuotations.SubAmount(true, result.Price, result.Amount)
+			if err != nil {
+				log.Fatalf("index: %d, id: %d, error: subAmount: %s\n", cancelOrder.Index, cancelOrder.OrderID, err)
+				return nil, e.LastIndex, err
+			}
+			if !isExist {
+				log.Fatalf("index: %d, id: %d, error: subAmount: %s\n", cancelOrder.Index, cancelOrder.OrderID, err)
+				return nil, e.LastIndex, common.ErrNotExist
+			}
+		} else {
+			isExist, err := e.SellQuotations.SubAmount(true, result.Price, result.Amount)
+			if err != nil {
+				log.Fatalf("index: %d, id: %d, error: subAmount: %s\n", cancelOrder.Index, cancelOrder.OrderID, err)
+				return nil, e.LastIndex, err
+			}
+			if !isExist {
+				log.Fatalf("index: %d, id: %d, error: subAmount: %s\n", cancelOrder.Index, cancelOrder.OrderID, err)
+				return nil, e.LastIndex, common.ErrNotExist
+			}
+		}
+		e.update(cancelOrder)
 		return nil, e.LastIndex, nil
-	}
-	o := item.(*order.Order)
-	result = &order.CancelOrder{
-		OrderID:       cancelOrder.OrderID,
-		CancelOrderID: o.OrderID,
-		MatchTime:     cancelOrder.OrderTime,
-		Price:         o.InitialPrice,
-		Amount:        o.RemainAmount,
-		IsBuy:         o.IsBuy,
-		Symbol:        o.Symbol,
-	}
-
-	if result.IsBuy {
-		isExist, err := e.BuyQuotations.SubAmount(result.Price, result.Amount, true)
-		if err != nil {
-			log.Fatalf("index: %d, id: %d, error: subAmount: %s\n", cancelOrder.Index, cancelOrder.OrderID, err)
-			return nil, e.LastIndex, err
-		}
-		if !isExist {
-			log.Fatalf("index: %d, id: %d, error: subAmount: %s\n", cancelOrder.Index, cancelOrder.OrderID, err)
-			return nil, e.LastIndex, common.ErrNotExist
-		}
-	} else {
-		isExist, err := e.SellQuotations.SubAmount(result.Price, result.Amount, false)
-		if err != nil {
-			log.Fatalf("index: %d, id: %d, error: subAmount: %s\n", cancelOrder.Index, cancelOrder.OrderID, err)
-			return nil, e.LastIndex, err
-		}
-		if !isExist {
-			log.Fatalf("index: %d, id: %d, error: subAmount: %s\n", cancelOrder.Index, cancelOrder.OrderID, err)
-			return nil, e.LastIndex, common.ErrNotExist
-		}
-	}
-	e.LastIndex = cancelOrder.Index
-	e.LastIndexTime = cancelOrder.IndexTime
-	e.LastOrderID = cancelOrder.OrderID
-	e.LastOrderTime = cancelOrder.OrderTime
-	return nil, e.LastIndex, nil
+	*/
+	return
 }
 
 func (e *Engine) Persist(path string) (fileName string, size int, err error) {
@@ -210,7 +218,7 @@ func (e *Engine) Quotation() (q *order.Quotation) {
 	buy := make([]uint64, len(e.BuyQuotations.Data))
 	copy(buy, e.BuyQuotations.Data)
 	sell := make([]uint64, len(e.SellQuotations.Data))
-	copy(sell, e.BuyQuotations.Data)
+	copy(sell, e.SellQuotations.Data)
 	q = &order.Quotation{
 		Time:               e.LastIndexTime,
 		BuyQuotationSlice:  buy,
@@ -219,6 +227,7 @@ func (e *Engine) Quotation() (q *order.Quotation) {
 	return
 }
 
+//to do： how to update orderIndex，if order process err
 func (e *Engine) match(o *order.Order) (result []*order.Transaction, err error) {
 	result = make([]*order.Transaction, 0, 2)
 	for {
@@ -230,26 +239,33 @@ func (e *Engine) match(o *order.Order) (result []*order.Transaction, err error) 
 		buy := buyItem.(*order.Order)
 		sell := sellItem.(*order.Order)
 
-		matchResult := order.Match(e.LastMatchPrice, e.LastOrderTime, buy, sell, o.IsBuy)
+		matchResult := order.Match(e.LastMatchPrice, o.OrderTime, buy, sell, o.IsBuy)
 		if matchResult != nil {
+			if buy.RemainAmount < matchResult.Amount || sell.RemainAmount < matchResult.Amount {
+				return nil, common.ErrAmount
+			}
+			buy.RemainAmount -= matchResult.Amount
+			sell.RemainAmount -= matchResult.Amount
 			result = append(result, matchResult)
 			if !buy.IsMarket {
-				isExist, err := e.BuyQuotations.SubAmount(buy.InitialPrice, matchResult.Amount, true)
-				if err != nil {
-					return nil, err
-				}
+				isExist, index, amount := e.BuyQuotations.BinarySearch(true, buy.InitialPrice)
 				if !isExist {
 					return nil, common.ErrNotExist
 				}
+				if amount < matchResult.Amount {
+					return nil, common.ErrAmount
+				}
+				e.BuyQuotations.SubAmount(index, matchResult.Amount)
 			}
 			if !sell.IsMarket {
-				isExist, err := e.SellQuotations.SubAmount(sell.InitialPrice, matchResult.Amount, false)
-				if err != nil {
-					return nil, err
-				}
+				isExist, index, amount := e.SellQuotations.BinarySearch(false, sell.InitialPrice)
 				if !isExist {
 					return nil, common.ErrNotExist
 				}
+				if amount < matchResult.Amount {
+					return nil, common.ErrAmount
+				}
+				e.SellQuotations.SubAmount(index, matchResult.Amount)
 			}
 		}
 

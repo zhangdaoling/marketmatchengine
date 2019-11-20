@@ -21,8 +21,8 @@ type Engine struct {
 	Symbol         string
 	BuyOrders      queue.PriorityQueue
 	SellOrders     queue.PriorityQueue
-	BuyQuotations  *order.QuotationSlice
-	SellQuotations *order.QuotationSlice
+	BuyQuotations  *order.OrderBookSlice
+	SellQuotations *order.OrderBookSlice
 	CheckSum       []byte
 	lock           sync.Mutex
 }
@@ -209,14 +209,14 @@ func (e *Engine) Persist(path string) (fileName string, size int, err error) {
 	return fileName, size, err
 }
 
-func (e *Engine) Quotation() (q *order.Quotation) {
+func (e *Engine) Quotation() (q *order.OrderBook) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 	buy := make([]uint64, len(e.BuyQuotations.Data))
 	copy(buy, e.BuyQuotations.Data)
 	sell := make([]uint64, len(e.SellQuotations.Data))
 	copy(sell, e.SellQuotations.Data)
-	q = &order.Quotation{
+	q = &order.OrderBook{
 		Index:              e.LastIndex,
 		MatchOrderID:       e.LastOrderID,
 		MatchTime:          e.LastOrderTime,
@@ -380,7 +380,7 @@ func UnSerialize(data []byte, e *Engine) (err error) {
 	return
 }
 
-func unSerializeList(data []byte, orders *queue.PriorityList, quotations *order.QuotationSlice) (err error) {
+func unSerializeList(data []byte, orders *queue.PriorityList, quotations *order.OrderBookSlice) (err error) {
 	var eof, irregular bool
 	var listType string
 	var count uint32

@@ -93,7 +93,7 @@ type App struct {
 	Engine          *engine.Engine
 	OrderChan       chan *sarama.ConsumerMessage
 	TransactionChan chan []*order.Transaction
-	QuotationChan   chan *order.Quotation
+	QuotationChan   chan *order.OrderBook
 }
 
 func (a *App) Loop(shutdown chan struct{}) {
@@ -271,7 +271,7 @@ type KafkaQuotationProducer struct {
 	Symbol       string
 	Key          string
 	Producer     sarama.SyncProducer
-	Channel      chan *order.Quotation
+	Channel      chan *order.OrderBook
 }
 
 func NewKafkaQuotationProducer(brokers []string, topic string, symbol string, size int) (producer *KafkaQuotationProducer, err error) {
@@ -285,7 +285,7 @@ func NewKafkaQuotationProducer(brokers []string, topic string, symbol string, si
 		Symbol:       symbol,
 		Key:          topic,
 		Producer:     p,
-		Channel:      make(chan *order.Quotation, size),
+		Channel:      make(chan *order.OrderBook, size),
 	}
 	return
 }

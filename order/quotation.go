@@ -6,7 +6,11 @@ import (
 )
 
 type Quotation struct {
-	Time               uint64
+	Index              uint64   `json:"index"`
+	MatchOrderID       uint64   `json:"match_order_id"`
+	MatchTime          uint64   `json:"match_time"`
+	MatchPrice         uint64   `json:match_price`
+	Symbol             string   `json:"symbol"`
 	BuyQuotationSlice  []uint64 `json:"buy_quotations"`
 	SellQuotationSlice []uint64 `json:"sell_quotations"`
 }

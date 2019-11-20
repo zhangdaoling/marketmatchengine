@@ -15,13 +15,16 @@ see "TestEngine" in engine/engine_test.go
 
 
 # to do
-*去重队列
+*order按照数据库created先后，进入kafka，如果时间一样的订单进来
+*order进kafka前需要保证唯一性（是进数据时保证，还是按照kafka offset保证），需不需要保证自增性，撮合暂时没有考虑去重
 *test: kafka_demo simple test: pass
-*kafka message timestamp
-*test:market order test
-*test:order match test: pass
+*kafka message create timestamp没法设置
 *test:quotation array test:pass
-*test:cancel order
+*test:order match test: pass
+*test:market order test
+*test:cancel order dev and test
 *more order type
+
+
 *log
 

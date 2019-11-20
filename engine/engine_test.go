@@ -23,7 +23,7 @@ func TestMatch(t *testing.T) {
 	orderIDIndex = 1
 	initBuy(10)
 	initSell(10)
-	e, err := NewEngine("A-B", 0, 0, 100)
+	e, err := NewEngine("A-B", 0, 100)
 	assert.Nil(t, err)
 	t.Logf("%v\n", time.Now())
 	for _, o := range buyOrders {
@@ -49,7 +49,7 @@ func TestPersit(t *testing.T) {
 	orderIDIndex = 1
 	initBuy(2)
 	initSell(2)
-	e1, err := NewEngine("A-B", 100, 100, 100)
+	e1, err := NewEngine("A-B", 100, 100)
 	assert.Nil(t, err)
 	e1.BuyOrders = queue.NewPriorityList()
 	e1.SellOrders = queue.NewPriorityList()
@@ -76,7 +76,7 @@ func TestSerialize(t *testing.T) {
 	orderIDIndex = 1
 	initBuy(2)
 	initSell(2)
-	e1, err := NewEngine("A-B", 100, 100, 100)
+	e1, err := NewEngine("A-B", 100, 100)
 	assert.Nil(t, err)
 	e1.BuyOrders = queue.NewPriorityList()
 	e1.SellOrders = queue.NewPriorityList()
@@ -91,7 +91,7 @@ func TestSerialize(t *testing.T) {
 
 	zero := e1.serialize()
 	t.Logf("size: %d \n", len(zero.Bytes()))
-	e2, err := NewEngine("A-B", 100, 100, 100)
+	e2, err := NewEngine("A-B", 100, 100)
 	err = UnSerialize(zero.Bytes(), e2)
 	assert.Nil(t, err)
 	euqalEngine(t, e1, e2)
@@ -149,7 +149,6 @@ func equalArray(t *testing.T, b1 []uint64, b2 []uint64) {
 func equalOrder(t *testing.T, o1 *order.Order, o2 *order.Order) {
 	assert.Equal(t, o1.RemainAmount, o2.RemainAmount)
 	assert.Equal(t, o1.Index, o2.Index)
-	assert.Equal(t, o1.IndexTime, o2.IndexTime)
 	assert.Equal(t, o1.OrderID, o2.OrderID)
 	assert.Equal(t, o1.OrderTime, o2.OrderTime)
 	assert.Equal(t, o1.UserID, o2.UserID)

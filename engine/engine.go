@@ -15,7 +15,6 @@ import (
 
 type Engine struct {
 	LastIndex      uint64
-	LastIndexTime  uint64
 	LastOrderID    uint64
 	LastOrderTime  uint64
 	LastMatchPrice uint64
@@ -40,10 +39,9 @@ func NewEngineFromFile(fileName string, path string) (e *Engine, err error) {
 	return
 }
 
-func NewEngine(symbol string, lastIndex uint64, lastIndexTime uint64, lastPrice uint64) (engine *Engine, err error) {
+func NewEngine(symbol string, lastIndex uint64, lastPrice uint64) (engine *Engine, err error) {
 	engine = &Engine{
 		LastIndex:      lastIndex,
-		LastIndexTime:  lastIndexTime,
 		LastMatchPrice: lastPrice,
 		Symbol:         symbol,
 		BuyOrders:      queue.NewPriorityList(),
@@ -63,7 +61,6 @@ func (e *Engine) GetIndex() (index uint64) {
 
 func (e *Engine) update(o *order.Order) {
 	e.LastIndex = o.Index
-	e.LastIndexTime = o.OrderTime
 	e.LastOrderID = o.OrderID
 	e.LastOrderTime = o.OrderTime
 }
@@ -123,7 +120,7 @@ func (e *Engine) Match(o *order.Order) (result []*order.Transaction, next bool, 
 }
 
 //to do 如果取消的订单找不到怎么办，需同样需要返回数据，要不然取消订单会一直等
-func (e *Engine) Cancel(cancelOrder *order.Order) (result *order.CancelOrder, currentOrderID uint64, err error) {
+func (e *Engine) Cancel(cancelOrder *order.Order) (result *order.CancelTransaction, currentOrderID uint64, err error) {
 	/*
 		if cancelOrder == nil {
 			log.Printf("error: nil order\n")
@@ -151,7 +148,7 @@ func (e *Engine) Cancel(cancelOrder *order.Order) (result *order.CancelOrder, cu
 			return nil, e.LastIndex, nil
 		}
 		o := item.(*order.Order)
-		result = &order.CancelOrder{
+		result = &order.CancelTransaction{
 			OrderID:       cancelOrder.OrderID,
 			CancelOrderID: o.OrderID,
 			MatchTime:     cancelOrder.OrderTime,
@@ -220,7 +217,11 @@ func (e *Engine) Quotation() (q *order.Quotation) {
 	sell := make([]uint64, len(e.SellQuotations.Data))
 	copy(sell, e.SellQuotations.Data)
 	q = &order.Quotation{
-		Time:               e.LastIndexTime,
+		Index:              e.LastIndex,
+		MatchOrderID:       e.LastOrderID,
+		MatchTime:          e.LastOrderTime,
+		MatchPrice:         e.LastMatchPrice,
+		Symbol:             e.Symbol,
 		BuyQuotationSlice:  buy,
 		SellQuotationSlice: sell,
 	}
@@ -239,7 +240,7 @@ func (e *Engine) match(o *order.Order) (result []*order.Transaction, err error) 
 		buy := buyItem.(*order.Order)
 		sell := sellItem.(*order.Order)
 
-		matchResult := order.Match(e.LastMatchPrice, o.OrderTime, buy, sell, o.IsBuy)
+		matchResult := order.Match(e.LastMatchPrice, o, buy, sell)
 		if matchResult != nil {
 			if buy.RemainAmount < matchResult.Amount || sell.RemainAmount < matchResult.Amount {
 				return nil, common.ErrAmount
@@ -247,6 +248,7 @@ func (e *Engine) match(o *order.Order) (result []*order.Transaction, err error) 
 			buy.RemainAmount -= matchResult.Amount
 			sell.RemainAmount -= matchResult.Amount
 			result = append(result, matchResult)
+			e.LastMatchPrice = matchResult.Price
 			if !buy.IsMarket {
 				isExist, index, amount := e.BuyQuotations.BinarySearch(true, buy.InitialPrice)
 				if !isExist {
@@ -285,7 +287,6 @@ func (e *Engine) match(o *order.Order) (result []*order.Transaction, err error) 
 func (e *Engine) serialize() (zero *common.ZeroCopySink) {
 	zero = common.NewZeroCopySink(nil, 64*int(e.BuyOrders.Len()+e.SellOrders.Len()))
 	zero.WriteUint64(e.LastIndex)
-	zero.WriteUint64(e.LastIndexTime)
 	zero.WriteUint64(e.LastOrderID)
 	zero.WriteUint64(e.LastOrderTime)
 	zero.WriteUint64(e.LastMatchPrice)
@@ -305,10 +306,6 @@ func UnSerialize(data []byte, e *Engine) (err error) {
 	var irregular, eof bool
 	zero := common.NewZeroCopySource(data)
 	e.LastIndex, eof = zero.NextUint64()
-	if eof {
-		return common.ErrTooLarge
-	}
-	e.LastIndexTime, eof = zero.NextUint64()
 	if eof {
 		return common.ErrTooLarge
 	}

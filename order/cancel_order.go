@@ -2,7 +2,7 @@ package order
 
 import "fmt"
 
-type CancelOrder struct {
+type CancelTransaction struct {
 	Index         uint64
 	OrderID       uint64
 	CancelOrderID uint64
@@ -15,8 +15,8 @@ type CancelOrder struct {
 }
 
 //for print
-func (c CancelOrder) String() string {
-	return fmt.Sprintf("CancelOrder \n"+
+func (c CancelTransaction) String() string {
+	return fmt.Sprintf("CancelTransaction \n"+
 		"Index： %d\n"+
 		"OrderID: %d\n"+
 		"CancelOrderID: %d\n"+

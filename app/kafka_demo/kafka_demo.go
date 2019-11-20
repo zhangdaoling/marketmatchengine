@@ -244,7 +244,7 @@ func (p *KafkaTransactionProducer) Loop(shutdown chan struct{}) {
 		case o := <-p.Channel:
 			b, err = json.Marshal(o)
 			if err != nil {
-				log.Printf("json marshal error:", err)
+				log.Printf("json marshal error: %v\n", err)
 				close(shutdown)
 				return
 			}
@@ -304,7 +304,7 @@ func (p *KafkaQuotationProducer) Loop(shutdown chan struct{}) {
 		case o := <-p.Channel:
 			b, err = json.Marshal(o)
 			if err != nil {
-				log.Printf("json marshal error:", err)
+				log.Printf("json marshal error: %v\n", err)
 				close(shutdown)
 				return
 			}

@@ -16,5 +16,6 @@ GRANT ALL PRIVILEGES ON ${db}.* TO '${user}'@'%';"
 
 echo "init db ${db} on ${host}"
 mysql -b -h ${host} -u ${user} -p${password} -D ${db} -e "source ./table.sql"
-mysql -b -h ${host} -u ${user} -p${password} -D ${db} -e "source ./amount.sql"
+mysql -b -h ${host} -u ${user} -p${password} -D ${db} -e "source ./balance.sql"
+mysql -b -h ${host} -u ${user} -p${password} -D ${db} -e "source ./order.sql"
 echo "done"

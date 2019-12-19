@@ -148,7 +148,7 @@ func equalArray(t *testing.T, b1 []uint64, b2 []uint64) {
 
 func equalOrder(t *testing.T, o1 *order.Order, o2 *order.Order) {
 	assert.Equal(t, o1.RemainAmount, o2.RemainAmount)
-	assert.Equal(t, o1.Index, o2.Index)
+	assert.Equal(t, o1.OrderIndex, o2.OrderIndex)
 	assert.Equal(t, o1.OrderID, o2.OrderID)
 	assert.Equal(t, o1.OrderTime, o2.OrderTime)
 	assert.Equal(t, o1.UserID, o2.UserID)
@@ -165,7 +165,7 @@ func initBuy(length int) {
 	buyOrders = make([]*order.Order, 0, length)
 	for i := 0; i < length/2; i++ {
 		o := &order.Order{
-			Index:         orderIDIndex,
+			OrderIndex:    orderIDIndex,
 			OrderID:       orderIDIndex,
 			OrderTime:     2000000 + uint64(orderIDIndex),
 			UserID:        orderIDIndex,
@@ -180,7 +180,7 @@ func initBuy(length int) {
 	}
 	for i := 0; i < length/2; i++ {
 		o := &order.Order{
-			Index:         orderIDIndex,
+			OrderIndex:    orderIDIndex,
 			OrderID:       orderIDIndex,
 			OrderTime:     2000000 + uint64(orderIDIndex),
 			UserID:        orderIDIndex,
@@ -201,7 +201,7 @@ func initSell(length int) (orders []*order.Order) {
 	sellOrders = make([]*order.Order, 0, length)
 	for i := 0; i < length/2; i++ {
 		o := &order.Order{
-			Index:         orderIDIndex,
+			OrderIndex:    orderIDIndex,
 			OrderID:       orderIDIndex,
 			OrderTime:     2000000 + uint64(orderIDIndex),
 			UserID:        orderIDIndex,
@@ -216,7 +216,7 @@ func initSell(length int) (orders []*order.Order) {
 	}
 	for i := 0; i < length/2; i++ {
 		o := &order.Order{
-			Index:         orderIDIndex,
+			OrderIndex:    orderIDIndex,
 			OrderID:       orderIDIndex,
 			OrderTime:     2000000 + uint64(orderIDIndex),
 			UserID:        orderIDIndex,

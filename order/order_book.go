@@ -10,26 +10,25 @@ type OrderBook struct {
 	MatchOrderID       uint64   `json:"match_order_id"`
 	MatchTime          uint64   `json:"match_time"`
 	MatchPrice         uint64   `json:match_price`
-	Symbol             string   `json:"symbol"`
 	BuyQuotationSlice  []uint64 `json:"buy_quotations"`
 	SellQuotationSlice []uint64 `json:"sell_quotations"`
 }
 
-type OrderBookSlice struct {
+type BookSlice struct {
 	Data []uint64
 }
 
-func NewQuotation(cap int) (q *OrderBookSlice) {
-	q = &OrderBookSlice{make([]uint64, 0, 2*cap)}
+func NewQuotation(cap int) (q *BookSlice) {
+	q = &BookSlice{make([]uint64, 0, 2*cap)}
 	return
 }
 
-func (q OrderBookSlice) String() string {
+func (q BookSlice) String() string {
 	return fmt.Sprint("OrderBook \n")
 }
 
 //index is the position
-func (q *OrderBookSlice) BinarySearch(isBuy bool, price uint64) (isExist bool, index int, amount uint64) {
+func (q *BookSlice) BinarySearch(isBuy bool, price uint64) (isExist bool, index int, amount uint64) {
 	length := len(q.Data) / 2
 	if isBuy {
 		index = binarySearch(length, func(i int) bool { return q.Data[2*i] >= price })
@@ -43,8 +42,8 @@ func (q *OrderBookSlice) BinarySearch(isBuy bool, price uint64) (isExist bool, i
 	return false, index, amount
 }
 
-//OrderBookSlice must the same with isBuy
-func (q *OrderBookSlice) Insert(isBuy bool, price uint64, amount uint64) {
+//BookSlice must the same with isBuy
+func (q *BookSlice) Insert(isBuy bool, price uint64, amount uint64) {
 	isExist, index, _ := q.BinarySearch(isBuy, price)
 	length := len(q.Data) / 2
 	if isExist {
@@ -61,9 +60,9 @@ func (q *OrderBookSlice) Insert(isBuy bool, price uint64, amount uint64) {
 }
 
 //use search before subAmount
-//OrderBookSlice must the same with isBuy
+//BookSlice must the same with isBuy
 //amount <= sliceAmount; index < length
-func (q *OrderBookSlice) SubAmount(index int, amount uint64) {
+func (q *BookSlice) SubAmount(index int, amount uint64) {
 	length := len(q.Data) / 2
 	q.Data[2*index+1] -= amount
 	if q.Data[2*index+1] == 0 { //rebuild slice
@@ -75,7 +74,7 @@ func (q *OrderBookSlice) SubAmount(index int, amount uint64) {
 	return
 }
 
-func (q *OrderBookSlice) Serialize(zero *common.ZeroCopySink) {
+func (q *BookSlice) Serialize(zero *common.ZeroCopySink) {
 	zero = common.NewZeroCopySink(nil, 2*len(q.Data))
 	for _, v := range q.Data {
 		zero.WriteUint64(v)

@@ -78,7 +78,7 @@ func initBuy(length int) (orders []*order.Order) {
 	orders = make([]*order.Order, 0, length)
 	for i := 0; i < length/2; i++ {
 		o := &order.Order{
-			Index:         orderIDIndex,
+			OrderIndex:    orderIDIndex,
 			OrderID:       orderIDIndex,
 			OrderTime:     2000000 + uint64(orderIDIndex),
 			UserID:        orderIDIndex,
@@ -93,7 +93,7 @@ func initBuy(length int) (orders []*order.Order) {
 	}
 	for i := 0; i < length/2; i++ {
 		o := &order.Order{
-			Index:         orderIDIndex,
+			OrderIndex:    orderIDIndex,
 			OrderID:       orderIDIndex,
 			OrderTime:     2000000 + uint64(orderIDIndex),
 			UserID:        orderIDIndex,
@@ -114,7 +114,7 @@ func initSell(length int) (orders []*order.Order) {
 	orders = make([]*order.Order, 0, length)
 	for i := 0; i < length/2; i++ {
 		o := &order.Order{
-			Index:         orderIDIndex,
+			OrderIndex:    orderIDIndex,
 			OrderID:       orderIDIndex,
 			OrderTime:     2000000 + uint64(orderIDIndex),
 			UserID:        orderIDIndex,
@@ -129,7 +129,7 @@ func initSell(length int) (orders []*order.Order) {
 	}
 	for i := 0; i < length/2; i++ {
 		o := &order.Order{
-			Index:         orderIDIndex,
+			OrderIndex:    orderIDIndex,
 			OrderID:       orderIDIndex,
 			OrderTime:     2000000 + uint64(orderIDIndex),
 			UserID:        orderIDIndex,

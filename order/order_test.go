@@ -15,7 +15,7 @@ func TestMatchMarket(t *testing.T) {
 	//market to market
 	lastPrice = 1000
 	buyOrder = &Order{
-		Index:         1,
+		OrderIndex:    1,
 		OrderID:       3,
 		OrderTime:     4,
 		UserID:        5,
@@ -27,7 +27,7 @@ func TestMatchMarket(t *testing.T) {
 		RemainAmount:  10,
 	}
 	sellOrder = &Order{
-		Index:         11,
+		OrderIndex:    11,
 		OrderID:       13,
 		OrderTime:     14,
 		UserID:        15,
@@ -58,7 +58,7 @@ func TestMatchMarket(t *testing.T) {
 	//market to market
 	lastPrice = 1000
 	sellOrder = &Order{
-		Index:         11,
+		OrderIndex:    11,
 		OrderID:       13,
 		OrderTime:     14,
 		UserID:        15,
@@ -96,7 +96,7 @@ func TestMatchLimit(t *testing.T) {
 	//limit to market
 	lastPrice = 1000
 	buyOrder = &Order{
-		Index:         1,
+		OrderIndex:    1,
 		OrderID:       3,
 		OrderTime:     4,
 		UserID:        5,
@@ -108,7 +108,7 @@ func TestMatchLimit(t *testing.T) {
 		RemainAmount:  10,
 	}
 	sellOrder = &Order{
-		Index:         11,
+		OrderIndex:    11,
 		OrderID:       13,
 		OrderTime:     14,
 		UserID:        15,
@@ -139,7 +139,7 @@ func TestMatchLimit(t *testing.T) {
 	//limit to limit; buyPrice < sellPrice
 	lastPrice = 1000
 	sellOrder = &Order{
-		Index:         11,
+		OrderIndex:    11,
 		OrderID:       13,
 		OrderTime:     14,
 		UserID:        15,
@@ -157,7 +157,7 @@ func TestMatchLimit(t *testing.T) {
 	//limit to limit; buyPrice = SellPrice
 	lastPrice = 1000
 	sellOrder = &Order{
-		Index:         11,
+		OrderIndex:    11,
 		OrderID:       13,
 		OrderTime:     14,
 		UserID:        15,
@@ -188,7 +188,7 @@ func TestMatchLimit(t *testing.T) {
 	//limit to limit; buyPrice > SellPrice; direction = buy
 	lastPrice = 1000
 	sellOrder = &Order{
-		Index:         11,
+		OrderIndex:    11,
 		OrderID:       13,
 		OrderTime:     14,
 		UserID:        15,
@@ -219,7 +219,7 @@ func TestMatchLimit(t *testing.T) {
 	//limit to limit; buyPrice > SellPrice; direction = false
 	lastPrice = 1000
 	sellOrder = &Order{
-		Index:         11,
+		OrderIndex:    11,
 		OrderID:       13,
 		OrderTime:     14,
 		UserID:        15,
@@ -255,7 +255,7 @@ func TestCompare1(t *testing.T) {
 	order1 = &Order{
 		IsMarket:     true,
 		InitialPrice: 2,
-		Index:        2,
+		OrderIndex:   2,
 		OrderID:      2,
 	}
 
@@ -263,7 +263,7 @@ func TestCompare1(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     false,
 		InitialPrice: 2,
-		Index:        2,
+		OrderIndex:   2,
 		OrderID:      2,
 	}
 	r = order1.Compare(order2)
@@ -273,7 +273,7 @@ func TestCompare1(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     false,
 		InitialPrice: 3,
-		Index:        2,
+		OrderIndex:   2,
 		OrderID:      2,
 	}
 	r = order1.Compare(order2)
@@ -283,7 +283,7 @@ func TestCompare1(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     true,
 		InitialPrice: 1,
-		Index:        2,
+		OrderIndex:   2,
 		OrderID:      2,
 	}
 	r = order1.Compare(order2)
@@ -293,7 +293,7 @@ func TestCompare1(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     true,
 		InitialPrice: 3,
-		Index:        2,
+		OrderIndex:   2,
 		OrderID:      2,
 	}
 	r = order1.Compare(order2)
@@ -303,7 +303,7 @@ func TestCompare1(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     true,
 		InitialPrice: 2,
-		Index:        1,
+		OrderIndex:   1,
 		OrderID:      1,
 	}
 	r = order1.Compare(order2)
@@ -313,7 +313,7 @@ func TestCompare1(t *testing.T) {
 	order2 = &Order{
 		IsMarket:     true,
 		InitialPrice: 2,
-		Index:        2,
+		OrderIndex:   2,
 		OrderID:      2,
 	}
 	r = order1.Compare(order2)
@@ -324,7 +324,7 @@ func TestCompare1(t *testing.T) {
 		IsMarket:     true,
 		InitialPrice: 2,
 		OrderID:      3,
-		Index:        3,
+		OrderIndex:   3,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, 1, order2)
@@ -338,7 +338,7 @@ func TestCompare2(t *testing.T) {
 		IsMarket:     false,
 		InitialPrice: 2,
 		OrderID:      2,
-		Index:        2,
+		OrderIndex:   2,
 	}
 
 	//market and limit, always -1
@@ -346,7 +346,7 @@ func TestCompare2(t *testing.T) {
 		IsMarket:     true,
 		InitialPrice: 2,
 		OrderID:      2,
-		Index:        2,
+		OrderIndex:   2,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, -1, order2)
@@ -356,7 +356,7 @@ func TestCompare2(t *testing.T) {
 		IsMarket:     true,
 		InitialPrice: 2,
 		OrderID:      2,
-		Index:        2,
+		OrderIndex:   2,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, -1, order2)
@@ -366,7 +366,7 @@ func TestCompare2(t *testing.T) {
 		IsMarket:     false,
 		InitialPrice: 1,
 		OrderID:      2,
-		Index:        2,
+		OrderIndex:   2,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, -1, order2)
@@ -376,7 +376,7 @@ func TestCompare2(t *testing.T) {
 		IsMarket:     false,
 		InitialPrice: 3,
 		OrderID:      2,
-		Index:        2,
+		OrderIndex:   2,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, 1, order2)
@@ -386,7 +386,7 @@ func TestCompare2(t *testing.T) {
 		IsMarket:     false,
 		InitialPrice: 2,
 		OrderID:      1,
-		Index:        1,
+		OrderIndex:   1,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, -1, order2)
@@ -396,7 +396,7 @@ func TestCompare2(t *testing.T) {
 		IsMarket:     false,
 		InitialPrice: 2,
 		OrderID:      3,
-		Index:        3,
+		OrderIndex:   3,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, 1, order2)
@@ -406,7 +406,7 @@ func TestCompare2(t *testing.T) {
 		IsMarket:     false,
 		InitialPrice: 2,
 		OrderID:      2,
-		Index:        2,
+		OrderIndex:   2,
 	}
 	r = order1.Compare(order2)
 	assert.Equal(t, r, 0, order2)
@@ -415,7 +415,7 @@ func TestCompare2(t *testing.T) {
 func TestSerialize(t *testing.T) {
 	o1 := &Order{
 		RemainAmount:  434234434567,
-		Index:         2423534,
+		OrderIndex:    2423534,
 		OrderID:       243423534,
 		CancelOrderID: 43434,
 		OrderTime:     2083410,
@@ -430,7 +430,7 @@ func TestSerialize(t *testing.T) {
 	err := UnSerialize(z.Bytes(), o2)
 	assert.Nil(t, err)
 	assert.Equal(t, o1.RemainAmount, o2.RemainAmount)
-	assert.Equal(t, o1.Index, o2.Index)
+	assert.Equal(t, o1.OrderIndex, o2.OrderIndex)
 	assert.Equal(t, o1.OrderID, o2.OrderID)
 	assert.Equal(t, o1.CancelOrderID, o2.CancelOrderID)
 	assert.Equal(t, o1.OrderTime, o2.OrderTime)

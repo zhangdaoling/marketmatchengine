@@ -7,9 +7,8 @@ import (
 )
 
 type Order struct {
-	RemainAmount uint64
-	Index        uint64 `json:"index"`
-	//IndexTime     uint64 `json:"index_time"`
+	RemainAmount  uint64
+	OrderIndex    uint64 `json:"order_index"`
 	OrderID       uint64 `json:"order_id"`
 	OrderTime     uint64 `json:"order_time"`
 	UserID        uint64 `json:"user_id"`
@@ -26,7 +25,7 @@ type Order struct {
 func (o Order) String() string {
 	return fmt.Sprintf("order:\n"+
 		"RemainAmount: %d\n"+
-		"Index: %d\n"+
+		"OrderIndex: %d\n"+
 		"OrderID: %d\n"+
 		"OrderTime: %d\n"+
 		"UserID: %d\n"+
@@ -36,7 +35,7 @@ func (o Order) String() string {
 		"IsMarket: %t\n"+
 		"IsBuy: %t\n"+
 		"Symbol: %s\n",
-		o.RemainAmount, o.Index, o.OrderID, o.OrderTime, o.UserID, o.InitialPrice, o.InitialAmount, o.CancelOrderID, o.IsMarket, o.IsBuy, o.Symbol)
+		o.RemainAmount, o.OrderIndex, o.OrderID, o.OrderTime, o.UserID, o.InitialPrice, o.InitialAmount, o.CancelOrderID, o.IsMarket, o.IsBuy, o.Symbol)
 }
 
 //for queue.Item interface
@@ -64,7 +63,7 @@ func (o *Order) Compare(item interface{}) int {
 		return 1
 	}
 	//o.InitialPrice  == o.InitialPrice
-	return compareID(o.Index, i.Index)
+	return compareID(o.OrderIndex, i.OrderIndex)
 }
 
 //for queue.Item interface
@@ -85,7 +84,7 @@ func UnSerialize(data []byte, o *Order) (err error) {
 	if eof {
 		return common.ErrTooLarge
 	}
-	o.Index, eof = zero.NextUint64()
+	o.OrderIndex, eof = zero.NextUint64()
 	if eof {
 		return common.ErrTooLarge
 	}
@@ -140,7 +139,7 @@ func UnSerialize(data []byte, o *Order) (err error) {
 func (o *Order) serialize() (zero *common.ZeroCopySink) {
 	zero = common.NewZeroCopySink(nil, 64)
 	zero.WriteUint64(o.RemainAmount)
-	zero.WriteUint64(o.Index)
+	zero.WriteUint64(o.OrderIndex)
 	zero.WriteUint64(o.OrderID)
 	zero.WriteUint64(o.OrderTime)
 	zero.WriteUint64(o.UserID)
@@ -162,16 +161,15 @@ func Match(lastPrice uint64, o *Order, buy *Order, sell *Order) (r *Transaction)
 	}
 	var matchPrice, amount uint64
 	r = &Transaction{
-		BuyIndex:     buy.Index,
-		SellIndex:    sell.Index,
-		MatchOrderID: o.OrderID,
-		MatchTime:    o.OrderTime,
-		BuyOrderID:   buy.OrderID,
-		SellOrderID:  sell.OrderID,
-		BuyUserID:    buy.UserID,
-		SellUserID:   sell.UserID,
-		Symbol:       buy.Symbol,
-		IsBuy:        o.IsBuy,
+		MatchOrderIndex: o.OrderIndex,
+		MatchOrderID:    o.OrderID,
+		MatchTime:       o.OrderTime,
+		BuyOrderID:      buy.OrderID,
+		SellOrderID:     sell.OrderID,
+		BuyUserID:       buy.UserID,
+		SellUserID:      sell.UserID,
+		Symbol:          buy.Symbol,
+		IsBuy:           o.IsBuy,
 	}
 	amount = min(buy.RemainAmount, sell.RemainAmount)
 	if buy.IsMarket && sell.IsMarket {

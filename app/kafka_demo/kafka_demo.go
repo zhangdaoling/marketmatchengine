@@ -37,7 +37,7 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	orderConsumer, err := NewKafkaConsumer(brokers, OrderTopic, Symbol, 0, 100, int64(match.LastIndex))
+	orderConsumer, err := NewKafkaConsumer(brokers, OrderTopic, Symbol, 0, 100, int64(match.LastOrderIndex))
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -121,7 +121,7 @@ func (a *App) Loop(shutdown chan struct{}) {
 				log.Printf("symbol error: %s!=%s\n", o.Symbol, a.Engine.Symbol)
 				continue
 			}
-			o.Index = uint64(msg.Offset)
+			o.OrderIndex = uint64(msg.Offset)
 			//log.Println(msg.Timestamp)
 			//log.Println(msg.Timestamp.Unix())
 			o.IndexTime = uint64(msg.Timestamp.Unix())

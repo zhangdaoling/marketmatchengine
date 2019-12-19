@@ -14,15 +14,15 @@ import (
 )
 
 type Engine struct {
-	LastIndex      uint64
+	LastOrderIndex uint64
 	LastOrderID    uint64
 	LastOrderTime  uint64
 	LastMatchPrice uint64
 	Symbol         string
 	BuyOrders      queue.PriorityQueue
 	SellOrders     queue.PriorityQueue
-	BuyQuotations  *order.OrderBookSlice
-	SellQuotations *order.OrderBookSlice
+	BuyQuotations  *order.BookSlice
+	SellQuotations *order.BookSlice
 	CheckSum       []byte
 	lock           sync.Mutex
 }
@@ -41,7 +41,7 @@ func NewEngineFromFile(fileName string, path string) (e *Engine, err error) {
 
 func NewEngine(symbol string, lastIndex uint64, lastPrice uint64) (engine *Engine, err error) {
 	engine = &Engine{
-		LastIndex:      lastIndex,
+		LastOrderIndex: lastIndex,
 		LastMatchPrice: lastPrice,
 		Symbol:         symbol,
 		BuyOrders:      queue.NewPriorityList(),
@@ -55,12 +55,12 @@ func NewEngine(symbol string, lastIndex uint64, lastPrice uint64) (engine *Engin
 func (e *Engine) GetIndex() (index uint64) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
-	index = e.LastIndex
+	index = e.LastOrderIndex
 	return
 }
 
 func (e *Engine) update(o *order.Order) {
-	e.LastIndex = o.Index
+	e.LastOrderIndex = o.OrderIndex
 	e.LastOrderID = o.OrderID
 	e.LastOrderTime = o.OrderTime
 }
@@ -71,19 +71,19 @@ func (e *Engine) Match(o *order.Order) (result []*order.Transaction, next bool, 
 		return nil, true, nil
 	}
 	if o.Symbol != e.Symbol {
-		log.Printf("index: %d, id: %d, error: symbol: %s != %s\n", o.Index, o.OrderID, o.Symbol, e.Symbol)
+		log.Printf("index: %d, id: %d, error: symbol: %s != %s\n", o.OrderIndex, o.OrderID, o.Symbol, e.Symbol)
 		return nil, true, common.ErrSymbol
 	}
-	if o.Index <= e.LastIndex && e.LastIndex != 0 {
-		log.Printf("index: %d, id: %d, warn: skip older order index: %d, current orderIndex: %d\n", o.Index, o.OrderID, o.Index, e.LastIndex)
+	if o.OrderIndex <= e.LastOrderIndex && e.LastOrderIndex != 0 {
+		log.Printf("index: %d, id: %d, warn: skip older order index: %d, current orderIndex: %d\n", o.OrderIndex, o.OrderID, o.OrderIndex, e.LastOrderIndex)
 		return nil, true, nil
 	}
 	if o.InitialAmount < 0 {
-		log.Printf("index: %d, id: %d, warn: amount<0 , current orderIndex: %d, engineIndex: %d\n", o.Index, o.OrderID, o.Index, e.LastIndex)
+		log.Printf("index: %d, id: %d, warn: amount<0 , current orderIndex: %d, engineIndex: %d\n", o.OrderIndex, o.OrderID, o.OrderIndex, e.LastOrderIndex)
 		return nil, true, nil
 	}
 	if o.InitialAmount == 0 {
-		log.Printf("index: %d, id: %d, warn: amount=0 , current orderIndex: %d, engineIndex: %d\n", o.Index, o.OrderID, o.Index, e.LastIndex)
+		log.Printf("index: %d, id: %d, warn: amount=0 , current orderIndex: %d, engineIndex: %d\n", o.OrderIndex, o.OrderID, o.OrderIndex, e.LastOrderIndex)
 		return nil, true, nil
 	}
 
@@ -93,7 +93,7 @@ func (e *Engine) Match(o *order.Order) (result []*order.Transaction, next bool, 
 	o.RemainAmount = o.InitialAmount
 	if o.IsBuy {
 		if e.BuyOrders.Search(o.OrderID) {
-			log.Printf("warn: skip same index: %d, id: %d\n", o.Index, o.OrderID)
+			log.Printf("warn: skip same index: %d, id: %d\n", o.OrderIndex, o.OrderID)
 			return nil, true, nil
 		}
 		e.BuyOrders.Insert(o)
@@ -102,7 +102,7 @@ func (e *Engine) Match(o *order.Order) (result []*order.Transaction, next bool, 
 		}
 	} else {
 		if e.SellOrders.Search(o.OrderID) {
-			log.Printf("warn: skip same index: %d, id: %d\n", o.Index, o.OrderID)
+			log.Printf("warn: skip same index: %d, id: %d\n", o.OrderIndex, o.OrderID)
 			return nil, true, nil
 		}
 		e.SellOrders.Insert(o)
@@ -124,15 +124,15 @@ func (e *Engine) Cancel(cancelOrder *order.Order) (result *order.CancelTransacti
 	/*
 		if cancelOrder == nil {
 			log.Printf("error: nil order\n")
-			return nil, e.LastIndex, nil
+			return nil, e.LastOrderIndex, nil
 		}
 		if cancelOrder.Symbol != e.Symbol {
-			log.Printf("index: %d, id: %d, error: symbol: %s != %s\n", cancelOrder.Index, cancelOrder.OrderID, cancelOrder.Symbol, e.Symbol)
-			return nil, e.LastIndex, common.ErrSymbol
+			log.Printf("index: %d, id: %d, error: symbol: %s != %s\n", cancelOrder.OrderIndex, cancelOrder.OrderID, cancelOrder.Symbol, e.Symbol)
+			return nil, e.LastOrderIndex, common.ErrSymbol
 		}
-		if cancelOrder.Index <= e.LastIndex && e.LastIndex != 0 {
-			log.Printf("index: %d, id: %d, warn: skip older order index: %d, current orderIndex: %d\n", cancelOrder.Index, cancelOrder.OrderID, cancelOrder.Index, e.LastIndex)
-			return nil, e.LastIndex, nil
+		if cancelOrder.OrderIndex <= e.LastOrderIndex && e.LastOrderIndex != 0 {
+			log.Printf("index: %d, id: %d, warn: skip older order index: %d, current orderIndex: %d\n", cancelOrder.OrderIndex, cancelOrder.OrderID, cancelOrder.OrderIndex, e.LastOrderIndex)
+			return nil, e.LastOrderIndex, nil
 		}
 
 		e.lock.Lock()
@@ -145,7 +145,7 @@ func (e *Engine) Cancel(cancelOrder *order.Order) (result *order.CancelTransacti
 		}
 		if item == nil {
 			e.update(cancelOrder)
-			return nil, e.LastIndex, nil
+			return nil, e.LastOrderIndex, nil
 		}
 		o := item.(*order.Order)
 		result = &order.CancelTransaction{
@@ -161,26 +161,26 @@ func (e *Engine) Cancel(cancelOrder *order.Order) (result *order.CancelTransacti
 		if result.IsBuy {
 			isExist, err := e.BuyQuotations.SubAmount(true, result.Price, result.Amount)
 			if err != nil {
-				log.Fatalf("index: %d, id: %d, error: subAmount: %s\n", cancelOrder.Index, cancelOrder.OrderID, err)
-				return nil, e.LastIndex, err
+				log.Fatalf("index: %d, id: %d, error: subAmount: %s\n", cancelOrder.OrderIndex, cancelOrder.OrderID, err)
+				return nil, e.LastOrderIndex, err
 			}
 			if !isExist {
-				log.Fatalf("index: %d, id: %d, error: subAmount: %s\n", cancelOrder.Index, cancelOrder.OrderID, err)
-				return nil, e.LastIndex, common.ErrNotExist
+				log.Fatalf("index: %d, id: %d, error: subAmount: %s\n", cancelOrder.OrderIndex, cancelOrder.OrderID, err)
+				return nil, e.LastOrderIndex, common.ErrNotExist
 			}
 		} else {
 			isExist, err := e.SellQuotations.SubAmount(true, result.Price, result.Amount)
 			if err != nil {
-				log.Fatalf("index: %d, id: %d, error: subAmount: %s\n", cancelOrder.Index, cancelOrder.OrderID, err)
-				return nil, e.LastIndex, err
+				log.Fatalf("index: %d, id: %d, error: subAmount: %s\n", cancelOrder.OrderIndex, cancelOrder.OrderID, err)
+				return nil, e.LastOrderIndex, err
 			}
 			if !isExist {
-				log.Fatalf("index: %d, id: %d, error: subAmount: %s\n", cancelOrder.Index, cancelOrder.OrderID, err)
-				return nil, e.LastIndex, common.ErrNotExist
+				log.Fatalf("index: %d, id: %d, error: subAmount: %s\n", cancelOrder.OrderIndex, cancelOrder.OrderID, err)
+				return nil, e.LastOrderIndex, common.ErrNotExist
 			}
 		}
 		e.update(cancelOrder)
-		return nil, e.LastIndex, nil
+		return nil, e.LastOrderIndex, nil
 	*/
 	return
 }
@@ -217,11 +217,10 @@ func (e *Engine) Quotation() (q *order.OrderBook) {
 	sell := make([]uint64, len(e.SellQuotations.Data))
 	copy(sell, e.SellQuotations.Data)
 	q = &order.OrderBook{
-		Index:              e.LastIndex,
+		Index:              e.LastOrderIndex,
 		MatchOrderID:       e.LastOrderID,
 		MatchTime:          e.LastOrderTime,
 		MatchPrice:         e.LastMatchPrice,
-		Symbol:             e.Symbol,
 		BuyQuotationSlice:  buy,
 		SellQuotationSlice: sell,
 	}
@@ -286,7 +285,7 @@ func (e *Engine) match(o *order.Order) (result []*order.Transaction, err error) 
 
 func (e *Engine) serialize() (zero *common.ZeroCopySink) {
 	zero = common.NewZeroCopySink(nil, 64*int(e.BuyOrders.Len()+e.SellOrders.Len()))
-	zero.WriteUint64(e.LastIndex)
+	zero.WriteUint64(e.LastOrderIndex)
 	zero.WriteUint64(e.LastOrderID)
 	zero.WriteUint64(e.LastOrderTime)
 	zero.WriteUint64(e.LastMatchPrice)
@@ -305,7 +304,7 @@ func (e *Engine) serialize() (zero *common.ZeroCopySink) {
 func UnSerialize(data []byte, e *Engine) (err error) {
 	var irregular, eof bool
 	zero := common.NewZeroCopySource(data)
-	e.LastIndex, eof = zero.NextUint64()
+	e.LastOrderIndex, eof = zero.NextUint64()
 	if eof {
 		return common.ErrTooLarge
 	}
@@ -380,7 +379,7 @@ func UnSerialize(data []byte, e *Engine) (err error) {
 	return
 }
 
-func unSerializeList(data []byte, orders *queue.PriorityList, quotations *order.OrderBookSlice) (err error) {
+func unSerializeList(data []byte, orders *queue.PriorityList, quotations *order.BookSlice) (err error) {
 	var eof, irregular bool
 	var listType string
 	var count uint32

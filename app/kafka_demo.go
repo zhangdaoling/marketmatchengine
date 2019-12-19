@@ -192,7 +192,7 @@ func (c *KafkaOrderConsumer) Loop(shutdown chan struct{}) {
 				close(shutdown)
 				return
 			}
-			o.Index = uint64(msg.Offset)
+			o.OrderIndex = uint64(msg.Offset)
 			o.IndexTime = uint64(msg.Timestamp.Nanosecond())
 			c.Channel <- o
 		}

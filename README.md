@@ -14,28 +14,18 @@ see "TestEngine" in engine/engine_test.go
 
 
 # to do
-*order按照数据库created先后，进入kafka，kafka充当定序功能
+*行情实现不太好，使用btree（google/btree）替换proprity_queue，行情改为主动推送。
 
-*order进kafka前需要保证唯一性（是进数据时保证，还是按照kafka offset保证），撮合内部没有考虑去重
-
-*test: kafka_demo simple test: pass
+*order进kafka前需要保证唯一性，撮合内部不做去重
 
 *kafka message create timestamp没法设置（研究下kafka这个特性）
 
-*test:quotation array test:pass
-
-*test:order match test: pass
-
-*test:market order test
-
-*test:cancel order dev and test
-
-*more order type: cancel type
+*支持取消交易功能
 
 *log
 
-*行情服务。目前行情直接推送进入kafka
+*行情服务:数据流转:撮合行情数据->kafka->websocket。websocket根据时间去重
 
-*清算服务。撮合结果根据资产类型进入kafka patatition。消费者按照手续费、资产类型分别清算，减少锁数据库
+*清算服务:数据流:撮合交易数据->kafka->消费者->db(mysql)，用户资产按照资产类型分库分表，所有数据库操作按照uid排序再操作数据库，交易数据会被多个消费者消费，例如btc-usdt交易对，会被btc，usdt，手续费三个消费者消费。
 
-*通知服务。
+*通知服务:数据流:撮合交易数据->kafka->通知服务

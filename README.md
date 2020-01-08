@@ -29,3 +29,7 @@ see "TestEngine" in engine/engine_test.go
 *清算服务:数据流:撮合交易数据->kafka->消费者->db(mysql)，用户资产按照资产类型分库分表，所有数据库操作按照uid排序再操作数据库，交易数据会被多个消费者消费，例如btc-usdt交易对，会被btc，usdt，手续费三个消费者消费。
 
 *通知服务:数据流:撮合交易数据->kafka->通知服务
+
+#support
+btc address：394nLFQo2XVf9ruET6JYRw4inoPF2YUaox
+eth address：0x4914eAb996a15c8b8B0896F178357838cb0aD60a

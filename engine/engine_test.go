@@ -235,8 +235,8 @@ func initSell(length int) (orders []*order.Order) {
 //push order to kafka
 func TestData(t *testing.T) {
 	orderIDIndex = 1
-	initBuy(50000)
-	initSell(50000)
+	initBuy(75000)
+	initSell(75000)
 	buyOrders = append(buyOrders, sellOrders...)
 
 	producer, err := sarama.NewSyncProducer([]string{"localhost:9092"}, nil)

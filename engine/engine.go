@@ -151,7 +151,7 @@ func (e *Engine) Cancel(cancelOrder *order.Order) (result *order.CancelTransacti
 		result = &order.CancelTransaction{
 			OrderID:       cancelOrder.OrderID,
 			CancelOrderID: o.OrderID,
-			MatchTime:     cancelOrder.OrderTime,
+			MatchOrderTime:     cancelOrder.OrderTime,
 			Price:         o.InitialPrice,
 			Amount:        o.RemainAmount,
 			IsBuy:         o.IsBuy,

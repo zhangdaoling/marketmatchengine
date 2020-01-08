@@ -33,7 +33,7 @@ func main() {
 	flag.Parse()
 	brokers := strings.Split(*kafkaBrokers, ",")
 
-	match, err := engine.NewEngine(Symbol, 0, 0, 0)
+	match, err := engine.NewEngine(Symbol, 0, 0)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -97,17 +97,18 @@ type App struct {
 }
 
 func (a *App) Loop(shutdown chan struct{}) {
-	var err error
 	quotationTime := time.NewTicker(5 * time.Second)
 	persitTime := time.NewTicker(10 * time.Second)
 	for {
 		select {
 		case <-shutdown:
 			fmt.Println("close app")
-			_, _, err = a.Engine.Persist(a.PersistPath)
-			if err != nil {
-				log.Println(err)
-			}
+			/*
+				_, _, err = a.Engine.Persist(a.PersistPath)
+				if err != nil {
+					log.Println(err)
+				}
+			*/
 			return
 
 		case o := <-a.OrderChan:
@@ -171,6 +172,7 @@ func NewKafkaOrderConsumer(brokers []string, topic string, symbol string, partit
 }
 
 func (c *KafkaOrderConsumer) Loop(shutdown chan struct{}) {
+	fmt.Println("start OrderConsumer: ", time.Now())
 	var err error
 	for {
 		select {
@@ -193,7 +195,6 @@ func (c *KafkaOrderConsumer) Loop(shutdown chan struct{}) {
 				return
 			}
 			o.OrderIndex = uint64(msg.Offset)
-			o.IndexTime = uint64(msg.Timestamp.Nanosecond())
 			c.Channel <- o
 		}
 	}
@@ -253,7 +254,10 @@ func (p *KafkaTransactionProducer) Loop(shutdown chan struct{}) {
 				close(shutdown)
 				return
 			} else {
-				log.Printf("order message sent to partition %d at offset %d\n", partition, offset)
+				if offset%100 == 0 {
+					fmt.Println("time: ", time.Now(), "  xxxx: ", offset)
+				}
+				log.Printf("transaction message sent to partition %d at offset %d\n", partition, offset)
 			}
 		}
 	}

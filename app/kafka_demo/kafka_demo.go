@@ -33,7 +33,7 @@ func main() {
 	flag.Parse()
 	brokers := strings.Split(*kafkaBrokers, ",")
 
-	match, err := engine.NewEngine(Symbol, 0, 0, 0)
+	match, err := engine.NewEngine(Symbol, 0, 0)
 	if err != nil {
 		log.Fatalln(err)
 	}

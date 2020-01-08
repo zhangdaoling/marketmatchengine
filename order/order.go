@@ -163,7 +163,7 @@ func Match(lastPrice uint64, o *Order, buy *Order, sell *Order) (r *Transaction)
 	r = &Transaction{
 		MatchOrderIndex: o.OrderIndex,
 		MatchOrderID:    o.OrderID,
-		MatchTime:       o.OrderTime,
+		MatchOrderTime:  o.OrderTime,
 		BuyOrderID:      buy.OrderID,
 		SellOrderID:     sell.OrderID,
 		BuyUserID:       buy.UserID,

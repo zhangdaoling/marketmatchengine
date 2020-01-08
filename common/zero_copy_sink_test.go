@@ -14,7 +14,7 @@ func TestSourceSink(t *testing.T) {
 	a7 := uint64(18446744073709551615)
 	a8 := []byte{10, 11, 12}
 	a9 := "hello onchain."
-	sink := NewZeroCopySink(nil)
+	sink := NewZeroCopySink(nil, 100)
 	sink.WriteByte(a3)
 	sink.WriteUint16(a4)
 	sink.WriteUint32(a5)
@@ -50,7 +50,7 @@ func BenchmarkZeroCopySink(ben *testing.B) {
 	a7 := uint64(18446744073709551615)
 	a8 := []byte{10, 11, 12}
 	a9 := "hello onchain."
-	sink := NewZeroCopySink(nil)
+	sink := NewZeroCopySink(nil, 100)
 	for i := 0; i < ben.N; i++ {
 		sink.Reset()
 		for j := 0; j < N; j++ {

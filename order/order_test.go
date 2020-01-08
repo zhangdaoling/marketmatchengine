@@ -39,18 +39,17 @@ func TestMatchMarket(t *testing.T) {
 		RemainAmount:  10,
 	}
 	expectTransaction = &Transaction{
-		BuyIndex:     1,
-		SellIndex:    11,
-		MatchOrderID: buyOrder.OrderID,
-		MatchTime:    buyOrder.OrderTime,
-		BuyOrderID:   3,
-		SellOrderID:  13,
-		BuyUserID:    5,
-		SellUserID:   15,
-		Symbol:       symbol,
-		IsBuy:        buyOrder.IsBuy,
-		Price:        lastPrice,
-		Amount:       10,
+		MatchOrderIndex: buyOrder.OrderIndex,
+		MatchOrderID:    buyOrder.OrderID,
+		MatchOrderTime:  buyOrder.OrderTime,
+		BuyOrderID:      3,
+		SellOrderID:     13,
+		BuyUserID:       5,
+		SellUserID:      15,
+		Symbol:          symbol,
+		IsBuy:           buyOrder.IsBuy,
+		Price:           lastPrice,
+		Amount:          10,
 	}
 	transaction = Match(lastPrice, buyOrder, buyOrder, sellOrder)
 	equalTransaction(t, expectTransaction, transaction)
@@ -70,18 +69,17 @@ func TestMatchMarket(t *testing.T) {
 		RemainAmount:  20,
 	}
 	expectTransaction = &Transaction{
-		BuyIndex:     1,
-		SellIndex:    11,
-		MatchOrderID: buyOrder.OrderID,
-		MatchTime:    buyOrder.OrderTime,
-		BuyOrderID:   3,
-		SellOrderID:  13,
-		BuyUserID:    5,
-		SellUserID:   15,
-		Symbol:       symbol,
-		IsBuy:        buyOrder.IsBuy,
-		Price:        sellOrder.InitialPrice,
-		Amount:       buyOrder.InitialAmount,
+		MatchOrderIndex: buyOrder.OrderIndex,
+		MatchOrderID:    buyOrder.OrderID,
+		MatchOrderTime:  buyOrder.OrderTime,
+		BuyOrderID:      3,
+		SellOrderID:     13,
+		BuyUserID:       5,
+		SellUserID:      15,
+		Symbol:          symbol,
+		IsBuy:           buyOrder.IsBuy,
+		Price:           sellOrder.InitialPrice,
+		Amount:          buyOrder.InitialAmount,
 	}
 	transaction = Match(lastPrice, buyOrder, buyOrder, sellOrder)
 	equalTransaction(t, expectTransaction, transaction)
@@ -120,18 +118,17 @@ func TestMatchLimit(t *testing.T) {
 		RemainAmount:  100,
 	}
 	expectTransaction = &Transaction{
-		BuyIndex:     1,
-		SellIndex:    11,
-		MatchOrderID: buyOrder.OrderID,
-		MatchTime:    buyOrder.OrderTime,
-		BuyOrderID:   3,
-		SellOrderID:  13,
-		BuyUserID:    5,
-		SellUserID:   15,
-		Symbol:       symbol,
-		IsBuy:        buyOrder.IsBuy,
-		Price:        buyOrder.InitialPrice,
-		Amount:       10,
+		MatchOrderIndex: buyOrder.OrderIndex,
+		MatchOrderID:    buyOrder.OrderID,
+		MatchOrderTime:  buyOrder.OrderTime,
+		BuyOrderID:      3,
+		SellOrderID:     13,
+		BuyUserID:       5,
+		SellUserID:      15,
+		Symbol:          symbol,
+		IsBuy:           buyOrder.IsBuy,
+		Price:           buyOrder.InitialPrice,
+		Amount:          10,
 	}
 	transaction = Match(lastPrice, buyOrder, buyOrder, sellOrder)
 	equalTransaction(t, expectTransaction, transaction)
@@ -169,18 +166,17 @@ func TestMatchLimit(t *testing.T) {
 		RemainAmount:  5,
 	}
 	expectTransaction = &Transaction{
-		BuyIndex:     1,
-		SellIndex:    11,
-		MatchOrderID: buyOrder.OrderID,
-		MatchTime:    buyOrder.OrderTime,
-		BuyOrderID:   3,
-		SellOrderID:  13,
-		BuyUserID:    5,
-		SellUserID:   15,
-		Symbol:       symbol,
-		IsBuy:        buyOrder.IsBuy,
-		Price:        buyOrder.InitialPrice,
-		Amount:       5,
+		MatchOrderIndex: buyOrder.OrderIndex,
+		MatchOrderID:    buyOrder.OrderID,
+		MatchOrderTime:  buyOrder.OrderTime,
+		BuyOrderID:      3,
+		SellOrderID:     13,
+		BuyUserID:       5,
+		SellUserID:      15,
+		Symbol:          symbol,
+		IsBuy:           buyOrder.IsBuy,
+		Price:           buyOrder.InitialPrice,
+		Amount:          5,
 	}
 	transaction = Match(lastPrice, buyOrder, buyOrder, sellOrder)
 	equalTransaction(t, expectTransaction, transaction)
@@ -200,23 +196,22 @@ func TestMatchLimit(t *testing.T) {
 		RemainAmount:  5,
 	}
 	expectTransaction = &Transaction{
-		BuyIndex:     1,
-		SellIndex:    11,
-		MatchOrderID: buyOrder.OrderID,
-		MatchTime:    buyOrder.OrderTime,
-		BuyOrderID:   3,
-		SellOrderID:  13,
-		BuyUserID:    5,
-		SellUserID:   15,
-		Symbol:       symbol,
-		IsBuy:        buyOrder.IsBuy,
-		Price:        sellOrder.InitialPrice,
-		Amount:       5,
+		MatchOrderIndex: buyOrder.OrderIndex,
+		MatchOrderID:    buyOrder.OrderID,
+		MatchOrderTime:  buyOrder.OrderTime,
+		BuyOrderID:      3,
+		SellOrderID:     13,
+		BuyUserID:       5,
+		SellUserID:      15,
+		Symbol:          symbol,
+		IsBuy:           buyOrder.IsBuy,
+		Price:           sellOrder.InitialPrice,
+		Amount:          5,
 	}
 	transaction = Match(lastPrice, buyOrder, buyOrder, sellOrder)
 	equalTransaction(t, expectTransaction, transaction)
 
-	//limit to limit; buyPrice > SellPrice; direction = false
+	//limit to limit; buyPrice > SellPrice; direction = false buy
 	lastPrice = 1000
 	sellOrder = &Order{
 		OrderIndex:    11,
@@ -231,20 +226,19 @@ func TestMatchLimit(t *testing.T) {
 		RemainAmount:  5,
 	}
 	expectTransaction = &Transaction{
-		BuyIndex:     1,
-		SellIndex:    11,
-		MatchOrderID: buyOrder.OrderID,
-		MatchTime:    buyOrder.OrderTime,
-		BuyOrderID:   3,
-		SellOrderID:  13,
-		BuyUserID:    5,
-		SellUserID:   15,
-		Symbol:       symbol,
-		IsBuy:        buyOrder.IsBuy,
-		Price:        buyOrder.InitialPrice,
-		Amount:       5,
+		MatchOrderIndex: sellOrder.OrderIndex,
+		MatchOrderID:    sellOrder.OrderID,
+		MatchOrderTime:  sellOrder.OrderTime,
+		BuyOrderID:      3,
+		SellOrderID:     13,
+		BuyUserID:       5,
+		SellUserID:      15,
+		Symbol:          symbol,
+		IsBuy:           sellOrder.IsBuy,
+		Price:           buyOrder.InitialPrice,
+		Amount:          5,
 	}
-	transaction = Match(lastPrice, buyOrder, buyOrder, sellOrder)
+	transaction = Match(lastPrice, sellOrder, buyOrder, sellOrder)
 	equalTransaction(t, expectTransaction, transaction)
 }
 
@@ -442,10 +436,9 @@ func TestSerialize(t *testing.T) {
 }
 
 func equalTransaction(t *testing.T, t1 *Transaction, t2 *Transaction) {
-	assert.Equal(t, t1.BuyIndex, t2.BuyIndex)
-	assert.Equal(t, t1.SellIndex, t2.SellIndex)
+	assert.Equal(t, t1.MatchOrderIndex, t2.MatchOrderIndex)
 	assert.Equal(t, t1.MatchOrderID, t2.MatchOrderID)
-	assert.Equal(t, t1.MatchTime, t2.MatchTime)
+	assert.Equal(t, t1.MatchOrderTime, t2.MatchOrderTime)
 	assert.Equal(t, t1.BuyOrderID, t2.BuyOrderID)
 	assert.Equal(t, t1.SellOrderID, t2.SellOrderID)
 	assert.Equal(t, t1.BuyUserID, t2.BuyUserID)

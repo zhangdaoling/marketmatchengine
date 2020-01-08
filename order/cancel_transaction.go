@@ -21,7 +21,7 @@ func (c CancelTransaction) String() string {
 		"OrderID: %d\n"+
 		"CancelOrderID: %d\n"+
 		"UserID: %d\n"+
-		"MatchTime: %d\n"+
+		"MatchOrderTime: %d\n"+
 		"Price: %d\n"+
 		"Amount: %d\n"+
 		"IsBuy: %t\n"+

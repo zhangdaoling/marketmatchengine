@@ -5,7 +5,7 @@ import "fmt"
 type Transaction struct {
 	MatchOrderIndex uint64 `json:"match_order_indxe"`
 	MatchOrderID    uint64 `json:"match_order_id"`
-	MatchTime       uint64 `json:"match_time"`
+	MatchOrderTime  uint64 `json:"match_order_time"`
 	BuyOrderID      uint64 `json:"buy_order_id"`
 	SellOrderID     uint64 `json:"sell_order_id"`
 	BuyUserID       uint64 `json:"buy_user_id"`
@@ -21,7 +21,7 @@ func (t Transaction) String() string {
 	return fmt.Sprintf("Transaction \n"+
 		"MatchOrderIndex: %d\n"+
 		"MatchOrderID: %d\n"+
-		"MatchTime: %d\n"+
+		"MatchOrderTime: %d\n"+
 		"BuyOrderID: %d\n"+
 		"SellOrderID: %d\n"+
 		"BuyUserID: %d\n"+
@@ -30,5 +30,5 @@ func (t Transaction) String() string {
 		"Amount: %d\n"+
 		"IsBuy: %t\n"+
 		"Symbol: %s\n",
-		t.MatchOrderIndex, t.MatchOrderID, t.MatchTime, t.BuyOrderID, t.SellOrderID, t.BuyUserID, t.SellUserID, t.Price, t.Amount, t.IsBuy, t.Symbol)
+		t.MatchOrderIndex, t.MatchOrderID, t.MatchOrderTime, t.BuyOrderID, t.SellOrderID, t.BuyUserID, t.SellUserID, t.Price, t.Amount, t.IsBuy, t.Symbol)
 }

@@ -31,5 +31,6 @@ see "TestEngine" in engine/engine_test.go
 *通知服务:数据流:撮合交易数据->kafka->通知服务
 
 # support
-btc address：394nLFQo2XVf9ruET6JYRw4inoPF2YUaox
-eth address：0x4914eAb996a15c8b8B0896F178357838cb0aD60a
+*btc address：394nLFQo2XVf9ruET6JYRw4inoPF2YUaox
+
+*eth address：0x4914eAb996a15c8b8B0896F178357838cb0aD60a
